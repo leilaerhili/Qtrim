@@ -49,6 +49,105 @@ def build_ghz_circuit(pad_level: int = 1) -> QuantumCircuit:
     _pad_rz_chain(qc, qr[1], pad_level)
     return qc
 
+def build_parity_circuit(pad_level: int = 1) -> QuantumCircuit:
+    """
+    Classical narrative: parity / XOR reduction.
+
+    Given input bits a, b, c, we compute parity into a target wire using CX chains.
+    We intentionally include redundant CX pairs and RZ padding to simulate a naive translation
+    that benefits from local rewrites.
+    """
+    qr = QuantumRegister(4, "q")  # q0,q1,q2 are "inputs", q3 is "parity target"
+    qc = QuantumCircuit(qr, name="parity")
+
+    # Parity: target ^= a ^ b ^ c
+    qc.cx(qr[0], qr[3])
+    qc.cx(qr[1], qr[3])
+    qc.cx(qr[2], qr[3])
+
+    # Naive/redundant artifacts for rewrites
+    qc.cx(qr[1], qr[3])
+    qc.cx(qr[1], qr[3])  # cancellable adjacent pair
+
+    qc.rz(0.15, qr[3])
+    qc.rz(0.25, qr[3])  # mergeable
+
+    _pad_rz_chain(qc, qr[3], pad_level)
+    return qc
+
+
+def build_half_adder_circuit(pad_level: int = 1) -> QuantumCircuit:
+    """
+    Classical narrative: half adder.
+
+    Inputs: a, b
+    Outputs: sum = a XOR b, carry = a AND b
+
+    We model a standard reversible construction using:
+    - sum on wire s via CX
+    - carry on wire c via CCX (Toffoli)
+
+    We intentionally add redundant CX / RZ patterns so the optimizer has visible wins.
+    """
+    qr = QuantumRegister(4, "q")  # q0=a, q1=b, q2=sum, q3=carry (ancillas start at |0>)
+    qc = QuantumCircuit(qr, name="half_adder")
+
+    a, b, s, c = qr[0], qr[1], qr[2], qr[3]
+
+    # sum = a XOR b into s
+    qc.cx(a, s)
+    qc.cx(b, s)
+
+    # carry = a AND b into c
+    qc.ccx(a, b, c)
+
+    # Naive artifacts (optimizer should clean these)
+    qc.cx(b, s)
+    qc.cx(b, s)  # cancellable pair
+
+    qc.rz(0.4, s)
+    qc.rz(-0.4, s)  # cancellable
+
+    _pad_rz_chain(qc, s, pad_level)
+    _pad_rz_chain(qc, c, pad_level)
+    return qc
+
+
+def build_majority_circuit(pad_level: int = 1) -> QuantumCircuit:
+    """
+    Classical narrative: majority vote (3-bit majority).
+
+    Inputs: a, b, c
+    Output: m = 1 if at least two of (a,b,c) are 1.
+
+    Reversible construction uses Toffolis to compute pairwise ANDs into ancillas
+    and combines them into an output wire. Small, deterministic, and still allows
+    local rewrite wins via deliberate CX/RZ artifacts.
+    """
+    qr = QuantumRegister(6, "q")  # a,b,c plus ancillas t0,t1 and output m
+    qc = QuantumCircuit(qr, name="majority")
+
+    a, b, c, t0, t1, m = qr[0], qr[1], qr[2], qr[3], qr[4], qr[5]
+
+    # t0 = a & b
+    qc.ccx(a, b, t0)
+    # t1 = a & c
+    qc.ccx(a, c, t1)
+
+    # m = t0 OR t1 OR (b & c)  (simple reversible-ish accumulation)
+    qc.cx(t0, m)
+    qc.cx(t1, m)
+    qc.ccx(b, c, m)
+
+    # Naive artifacts for local rewrites
+    qc.rz(0.2, m)
+    qc.rz(0.3, m)  # mergeable
+
+    qc.cx(t0, m)
+    qc.cx(t0, m)  # cancellable pair
+
+    _pad_rz_chain(qc, m, pad_level)
+    return qc
 
 def build_line_circuit(pad_level: int = 1) -> QuantumCircuit:
     """
@@ -66,8 +165,20 @@ def build_line_circuit(pad_level: int = 1) -> QuantumCircuit:
 
 
 BASELINE_BUILDERS: Dict[str, Callable[[int], QuantumCircuit]] = {
+    # Internal / debug
     "toy": build_toy_circuit,
-    "ghz": build_ghz_circuit,
+
+    # Demo-visible, classical-start narrative
+    "parity": build_parity_circuit,
+    "half_adder": build_half_adder_circuit,
+    "majority": build_majority_circuit,
+    "line": build_line_circuit,
+}
+
+DEMO_BUILDERS: Dict[str, Callable[[int], QuantumCircuit]] = {
+    "parity": build_parity_circuit,
+    "half_adder": build_half_adder_circuit,
+    "majority": build_majority_circuit,
     "line": build_line_circuit,
 }
 
@@ -80,3 +191,20 @@ def get_builder(name: str) -> Callable[[int], QuantumCircuit]:
     if key not in BASELINE_BUILDERS:
         raise KeyError(f"Unknown baseline circuit '{name}'. Options: {sorted(BASELINE_BUILDERS)}")
     return BASELINE_BUILDERS[key]
+
+
+def get_demo_builder_names() -> list[str]:
+    """
+    Names of demo-visible baselines (meaningful classical-start options).
+    """
+    return list(DEMO_BUILDERS.keys())
+
+
+def get_demo_builder(name: str) -> Callable[[int], QuantumCircuit]:
+    """
+    Get a demo-visible baseline circuit builder by name.
+    """
+    key = name.strip().lower()
+    if key not in DEMO_BUILDERS:
+        raise KeyError(f"Unknown demo baseline '{name}'. Options: {sorted(DEMO_BUILDERS)}")
+    return DEMO_BUILDERS[key]
