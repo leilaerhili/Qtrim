@@ -1,4 +1,3 @@
-
 """
 core/env_quantum_opt.py
 
@@ -11,7 +10,7 @@ This environment frames circuit optimization as a sequential decision process:
 
 The environment is intentionally small and "hackathon-safe":
 - Tiny observation space (few floats).
-- Small action space (6 actions).
+- Small action space (few actions).
 - Conservative, correctness-preserving rewrites.
 - Deterministic episode dynamics given a fixed starting circuit and actions.
 
@@ -34,7 +33,7 @@ available (small circuits only) but are disabled by default for speed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional
 
 import numpy as np
 import gymnasium as gym
@@ -54,7 +53,6 @@ from core.rewrites import (
     apply_action,
     list_actions,
 )
-
 
 CircuitBuilder = Callable[[int], QuantumCircuit]
 # CircuitBuilder(pad_level) -> QuantumCircuit
@@ -80,6 +78,7 @@ class EnvConfig:
     normalize_obs:
         If True, apply simple scaling to observation vector.
     """
+
     max_steps: int = 30
     stall_patience: int = 8
     reward_noop: float = -0.05
@@ -108,7 +107,6 @@ class QuantumOptEnv(gym.Env):
     - Episode ends when:
         - max_steps reached, or
         - no improvement for stall_patience steps.
-
     """
 
     metadata = {"render_modes": ["human"], "render_fps": 8}
@@ -131,8 +129,11 @@ class QuantumOptEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self._actions))
 
         # Observation vector: 6 floats.
-        # We'll allow a generous upper bound; normalization makes it robust anyway.
-        high = np.array([1e6, 1e6, 1e6, 1e6, float(len(self._actions)), 10.0], dtype=np.float32)
+        # We'll allow generous bounds; normalization makes it robust anyway.
+        high = np.array(
+            [1e6, 1e6, 1e6, 1e6, float(len(self._actions)), 10.0],
+            dtype=np.float32,
+        )
         low = np.zeros_like(high, dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 
@@ -153,7 +154,13 @@ class QuantumOptEnv(gym.Env):
     @staticmethod
     def _profile_to_id(profile: str) -> int:
         p = profile.strip().lower()
-        mapping = {"balanced": 0, "default": 0, "low_latency": 1, "low_noise": 2, "min_cx": 3}
+        mapping = {
+            "balanced": 0,
+            "default": 0,
+            "low_latency": 1,
+            "low_noise": 2,
+            "min_cx": 3,
+        }
         return mapping.get(p, 0)
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
@@ -217,10 +224,7 @@ class QuantumOptEnv(gym.Env):
         else:
             self._stall_count += 1
 
-        terminated = False
-        if self._stall_count >= self._config.stall_patience:
-            terminated = True
-
+        terminated = self._stall_count >= self._config.stall_patience
         truncated = self._step_count >= self._config.max_steps
 
         obs = self._get_obs()
@@ -237,10 +241,8 @@ class QuantumOptEnv(gym.Env):
         obs = np.array(vec, dtype=np.float32)
 
         if self._config.normalize_obs:
-            # Simple, stable scaling: keeps magnitudes reasonable.
-            # gate_count, depth, cx_count, rz_count can vary; divide by 100 for typicalR.
+            # Simple scaling: keep magnitudes reasonable.
             obs[0:4] = obs[0:4] / 100.0
-            # last_action and constraint id are already small.
         return obs
 
     def _get_info(self, last_result: Optional[RewriteResult]) -> Dict:
@@ -272,7 +274,10 @@ class QuantumOptEnv(gym.Env):
             print("(env not reset)")
             return
         m = compute_metrics(self._circ, weights=self._weights)
-        print(f"Step {self._step_count} | cost={m.cost:.3f} | gates={m.gate_count} | depth={m.depth} | cx={m.cx_count}")
+        print(
+            f"Step {self._step_count} | cost={m.cost:.3f} | "
+            f"gates={m.gate_count} | depth={m.depth} | cx={m.cx_count}"
+        )
 
     def get_circuit(self) -> QuantumCircuit:
         """Return a copy of the current circuit for visualization."""
@@ -298,10 +303,9 @@ class QuantumOptEnv(gym.Env):
 # -----------------------------
 
 def _example_builder(pad_level: int) -> QuantumCircuit:
-    """
-    Minimal example circuit builder.
-    """
+    """Minimal example circuit builder (debug-friendly)."""
     from core.circuits_baseline import build_toy_circuit
+
     return build_toy_circuit(pad_level)
 
 
@@ -309,17 +313,34 @@ def _quick_demo() -> None:
     """
     Quick manual sanity test:
         python -m core.env_quantum_opt
+
+    By default, this demo shows only "demo-visible" baselines (meaningful choices).
+    If your circuits_baseline.py does not define DEMO_BUILDERS/get_demo_builder,
+    it falls back to BASELINE_BUILDERS/get_builder.
     """
     import argparse
-    from core.circuits_baseline import get_builder
+
+    # Prefer demo-visible builders if your baseline file defines them.
+    try:
+        from core.circuits_baseline import DEMO_BUILDERS as _CHOICES, get_demo_builder as _GET
+        is_demo = True
+    except Exception:
+        from core.circuits_baseline import BASELINE_BUILDERS as _CHOICES, get_builder as _GET
+        is_demo = False
 
     parser = argparse.ArgumentParser(description="Quick demo for QuantumOptEnv.")
-    parser.add_argument("--baseline", default="toy", choices=["toy", "ghz", "line"])
+    default_baseline = sorted(_CHOICES.keys())[0] if _CHOICES else "toy"
+    parser.add_argument(
+        "--baseline",
+        default=default_baseline,
+        choices=sorted(_CHOICES.keys()),
+        help=("Baseline circuit name (demo choices)" if is_demo else "Baseline circuit name"),
+    )
     parser.add_argument("--pad-level", type=int, default=2)
     parser.add_argument("--max-steps", type=int, default=10)
     args = parser.parse_args()
 
-    builder = get_builder(args.baseline)
+    builder = _GET(args.baseline)
     env = QuantumOptEnv(
         circuit_builder=builder,
         pad_level=args.pad_level,
@@ -329,7 +350,7 @@ def _quick_demo() -> None:
     print("Reset obs:", obs)
     print("Reset info:", info["metrics"])
 
-    for _ in range(10):
+    for _ in range(args.max_steps):
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
         env.render()
