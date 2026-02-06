@@ -454,4 +454,36 @@ def _quick_demo() -> None:
 
 
 if __name__ == "__main__":
+    def _self_test() -> None:
+        """
+        Lightweight edge-case checks for angle wraparound.
+        """
+        from qiskit.circuit import QuantumRegister
+
+        qr = QuantumRegister(1, "q")
+
+        # Merge to identity via wraparound: pi + pi = 2pi -> identity.
+        qc = QuantumCircuit(qr)
+        qc.rz(math.pi, qr[0])
+        qc.rz(math.pi, qr[0])
+        merged, res = apply_action(qc, ACTION_MERGE_ADJACENT_RZ)
+        assert res.changed and len(merged.data) == 0, "Expected RZ(pi)+RZ(pi) to cancel."
+
+        # Cancel inverse with wraparound: 3pi + pi = 4pi -> identity.
+        qc = QuantumCircuit(qr)
+        qc.rz(3.0 * math.pi, qr[0])
+        qc.rz(1.0 * math.pi, qr[0])
+        merged, res = apply_action(qc, ACTION_MERGE_ADJACENT_RZ)
+        assert res.changed and len(merged.data) == 0, "Expected RZ(3pi)+RZ(pi) to cancel."
+
+        # Cancel inverse using explicit negative angle.
+        qc = QuantumCircuit(qr)
+        qc.rz(0.9 * math.pi, qr[0])
+        qc.rz(-0.9 * math.pi, qr[0])
+        canceled, res = apply_action(qc, ACTION_CANCEL_INVERSE_RZ)
+        assert res.changed and len(canceled.data) == 0, "Expected inverse RZ to cancel."
+
+        print("Self-test passed.")
+
+    _self_test()
     _quick_demo()
