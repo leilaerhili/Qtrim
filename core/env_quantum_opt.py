@@ -300,21 +300,9 @@ class QuantumOptEnv(gym.Env):
 def _example_builder(pad_level: int) -> QuantumCircuit:
     """
     Minimal example circuit builder.
-
-    Replace this with core.circuits_baseline.build_* functions in your project.
     """
-    from qiskit.circuit import QuantumRegister
-    qr = QuantumRegister(3, "q")
-    qc = QuantumCircuit(qr)
-    qc.cx(qr[0], qr[1])
-    qc.cx(qr[0], qr[1])  # cancellable
-    qc.rz(0.7, qr[2])
-    qc.rz(-0.7, qr[2])   # cancellable
-    # Pad a bit more if requested
-    for _ in range(max(0, pad_level - 1)):
-        qc.rz(0.1, qr[2])
-        qc.rz(0.2, qr[2])
-    return qc
+    from core.circuits_baseline import build_toy_circuit
+    return build_toy_circuit(pad_level)
 
 
 def _quick_demo() -> None:
@@ -322,7 +310,21 @@ def _quick_demo() -> None:
     Quick manual sanity test:
         python -m core.env_quantum_opt
     """
-    env = QuantumOptEnv(circuit_builder=_example_builder, pad_level=2, config=EnvConfig(max_steps=10))
+    import argparse
+    from core.circuits_baseline import get_builder
+
+    parser = argparse.ArgumentParser(description="Quick demo for QuantumOptEnv.")
+    parser.add_argument("--baseline", default="toy", choices=["toy", "ghz", "line"])
+    parser.add_argument("--pad-level", type=int, default=2)
+    parser.add_argument("--max-steps", type=int, default=10)
+    args = parser.parse_args()
+
+    builder = get_builder(args.baseline)
+    env = QuantumOptEnv(
+        circuit_builder=builder,
+        pad_level=args.pad_level,
+        config=EnvConfig(max_steps=args.max_steps),
+    )
     obs, info = env.reset()
     print("Reset obs:", obs)
     print("Reset info:", info["metrics"])
@@ -339,4 +341,3 @@ def _quick_demo() -> None:
 
 if __name__ == "__main__":
     _quick_demo()
-
