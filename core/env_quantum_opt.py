@@ -33,7 +33,7 @@ available (small circuits only) but are disabled by default for speed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import gymnasium as gym
@@ -48,10 +48,13 @@ from core.metrics import (
     observation_vector,
     weights_for_profile,
 )
+from core.shared_schema import constraint_profile_to_id
 from core.rewrites import (
     RewriteResult,
     apply_action,
+    applicable_action_mask,
     list_actions,
+    set_coupling_map,
 )
 
 CircuitBuilder = Callable[[int], QuantumCircuit]
@@ -71,20 +74,44 @@ class EnvConfig:
         End episode early if cost hasn't improved for this many consecutive steps.
     reward_noop:
         Small negative penalty when an action produces no change.
+    reward_inapplicable:
+        Additional penalty when a chosen action is currently inapplicable while
+        another applicable action exists.
+    reward_repeat_action:
+        Penalty for repeating the same action id as the previous step.
+    reward_repeat_noop:
+        Extra penalty for repeated no-op action (spam deterrent).
     reward_invalid:
         Penalty when action fails unexpectedly (exceptions).
     constraint_profile:
         Name of cost profile for this env instance (affects reward signal).
     normalize_obs:
         If True, apply simple scaling to observation vector.
+    coupling_edges:
+        Optional hardware coupling map edges used by routing rewrites.
+        If None, a line topology is inferred from circuit qubit count at reset.
+    coupling_directed:
+        Whether coupling_edges are directed.
+    allowed_action_ids:
+        Optional subset of global action ids allowed at step-time.
+        Action space remains fixed; disallowed actions become masked no-ops.
+    use_applicability_mask:
+        If True, compute action applicability mask each state and expose it in info.
     """
 
     max_steps: int = 30
     stall_patience: int = 8
-    reward_noop: float = -0.05
+    reward_noop: float = -0.1
+    reward_inapplicable: float = -0.2
+    reward_repeat_action: float = -0.03
+    reward_repeat_noop: float = -0.1
     reward_invalid: float = -1.0
     constraint_profile: str = "balanced"
     normalize_obs: bool = True
+    coupling_edges: Optional[Tuple[Tuple[int, int], ...]] = None
+    coupling_directed: bool = False
+    allowed_action_ids: Optional[Tuple[int, ...]] = None
+    use_applicability_mask: bool = True
 
 
 class QuantumOptEnv(gym.Env):
@@ -124,14 +151,26 @@ class QuantumOptEnv(gym.Env):
         self._pad_level = int(pad_level)
         self._config = config
 
-        # Stable action ids.
+        # Stable action ids (fixed action-space for SB3 compatibility).
         self._actions = list_actions()
         self.action_space = spaces.Discrete(len(self._actions))
+        self._global_to_name = dict(self._actions)
+        if config.allowed_action_ids is None:
+            self._allowed_action_ids: Optional[set[int]] = None
+        else:
+            chosen = {int(aid) for aid in config.allowed_action_ids}
+            known = {aid for aid, _ in self._actions}
+            invalid = sorted(chosen - known)
+            if invalid:
+                raise ValueError(f"Unknown action ids in allowed_action_ids: {invalid}")
+            if not chosen:
+                raise ValueError("allowed_action_ids produced an empty action set.")
+            self._allowed_action_ids = chosen
 
         # Observation vector: 6 floats.
         # We'll allow generous bounds; normalization makes it robust anyway.
         high = np.array(
-            [1e6, 1e6, 1e6, 1e6, float(len(self._actions)), 10.0],
+            [1e6, 1e6, 1e6, 1e6, 1e6, 10.0],
             dtype=np.float32,
         )
         low = np.zeros_like(high, dtype=np.float32)
@@ -150,18 +189,17 @@ class QuantumOptEnv(gym.Env):
         self._step_count: int = 0
         self._stall_count: int = 0
         self._last_cost: float = 0.0
+        self._action_mask: Optional[List[int]] = None
 
     @staticmethod
     def _profile_to_id(profile: str) -> int:
-        p = profile.strip().lower()
-        mapping = {
-            "balanced": 0,
-            "default": 0,
-            "low_latency": 1,
-            "low_noise": 2,
-            "min_cx": 3,
-        }
-        return mapping.get(p, 0)
+        return int(constraint_profile_to_id(profile))
+
+    @staticmethod
+    def _default_coupling_edges(num_qubits: int) -> Tuple[Tuple[int, int], ...]:
+        if num_qubits <= 1:
+            return tuple()
+        return tuple((i, i + 1) for i in range(num_qubits - 1))
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         if seed is not None:
@@ -173,14 +211,31 @@ class QuantumOptEnv(gym.Env):
             pad_level = int(options["pad_level"])
 
         self._circ = self._circuit_builder(pad_level)
+        configured_edges: Optional[Sequence[Tuple[int, int]]] = self._config.coupling_edges
+        if configured_edges is None:
+            configured_edges = self._default_coupling_edges(self._circ.num_qubits)
+        set_coupling_map(configured_edges, directed=self._config.coupling_directed)
         self._last_action_id = 0
         self._step_count = 0
         self._stall_count = 0
         self._last_cost = compute_cost(self._circ, weights=self._weights)
+        self._action_mask = self._compute_action_mask()
 
         obs = self._get_obs()
         info = self._get_info(last_result=None)
         return obs, info
+
+    def _compute_action_mask(self) -> List[int]:
+        if self._circ is None:
+            return [0] * len(self._actions)
+        if not self._config.use_applicability_mask:
+            if self._allowed_action_ids is None:
+                return [1] * len(self._actions)
+            return [1 if aid in self._allowed_action_ids else 0 for aid, _ in self._actions]
+        return applicable_action_mask(
+            self._circ,
+            allowed_action_ids=self._allowed_action_ids,
+        )
 
     def step(self, action: int):
         if self._circ is None:
@@ -188,24 +243,49 @@ class QuantumOptEnv(gym.Env):
 
         self._step_count += 1
         action_id = int(action)
+        if action_id < 0 or action_id >= len(self._actions):
+            raise ValueError(
+                f"Action index out of range: {action_id}. "
+                f"Expected [0, {len(self._actions) - 1}]"
+            )
 
         old_cost = self._last_cost
+        prev_action_id = self._last_action_id
         last_result: Optional[RewriteResult] = None
+        mask = self._action_mask if self._action_mask is not None else self._compute_action_mask()
+        has_any_applicable = any(bool(x) for x in mask)
+        is_action_applicable = bool(mask[action_id]) if action_id < len(mask) else False
 
-        try:
-            new_circ, result = apply_action(self._circ, action_id)
-            last_result = result
+        if not is_action_applicable:
+            last_result = RewriteResult(
+                changed=False,
+                action_id=action_id,
+                action_name=self._global_to_name.get(action_id, f"action_{action_id}"),
+                message=(
+                    "Action masked by curriculum stage."
+                    if (self._allowed_action_ids is not None and action_id not in self._allowed_action_ids)
+                    else "Action currently inapplicable."
+                ),
+                old_len=len(self._circ.data),
+                new_len=len(self._circ.data),
+                window=None,
+            )
             self._last_action_id = action_id
-            self._circ = new_circ
-        except Exception as e:
-            # Unexpected failure: penalize and terminate for safety.
-            reward = float(self._config.reward_invalid)
-            terminated = True
-            truncated = False
-            info = self._get_info(last_result=None)
-            info["error"] = str(e)
-            obs = self._get_obs()
-            return obs, reward, terminated, truncated, info
+        else:
+            try:
+                new_circ, result = apply_action(self._circ, action_id)
+                last_result = result
+                self._last_action_id = action_id
+                self._circ = new_circ
+            except Exception as e:
+                # Unexpected failure: penalize and terminate for safety.
+                reward = float(self._config.reward_invalid)
+                terminated = True
+                truncated = False
+                info = self._get_info(last_result=None)
+                info["error"] = str(e)
+                obs = self._get_obs()
+                return obs, reward, terminated, truncated, info
 
         new_cost = compute_cost(self._circ, weights=self._weights)
         self._last_cost = new_cost
@@ -217,6 +297,8 @@ class QuantumOptEnv(gym.Env):
         # Penalize pure no-ops slightly to encourage exploration.
         if last_result is not None and not last_result.changed:
             reward += float(self._config.reward_noop)
+            if has_any_applicable:
+                reward += float(self._config.reward_inapplicable)
 
         # Stall tracking
         if improvement > 1e-12:
@@ -224,9 +306,16 @@ class QuantumOptEnv(gym.Env):
         else:
             self._stall_count += 1
 
+        # Discourage action spam.
+        if action_id == prev_action_id:
+            reward += float(self._config.reward_repeat_action)
+            if last_result is not None and not last_result.changed:
+                reward += float(self._config.reward_repeat_noop)
+
         terminated = self._stall_count >= self._config.stall_patience
         truncated = self._step_count >= self._config.max_steps
 
+        self._action_mask = self._compute_action_mask()
         obs = self._get_obs()
         info = self._get_info(last_result=last_result)
         return obs, reward, terminated, truncated, info
@@ -267,6 +356,16 @@ class QuantumOptEnv(gym.Env):
                 "message": last_result.message,
                 "window": last_result.window,
             }
+        if self._action_mask is None:
+            info["action_mask"] = self._compute_action_mask()
+        else:
+            info["action_mask"] = list(self._action_mask)
+        if self._allowed_action_ids is None:
+            info["available_actions"] = self._actions
+        else:
+            info["available_actions"] = [
+                (aid, name) for aid, name in self._actions if aid in self._allowed_action_ids
+            ]
         return info
 
     def render(self):
@@ -296,6 +395,7 @@ class QuantumOptEnv(gym.Env):
         # Update last_cost to match new weights for consistent reward deltas.
         if self._circ is not None:
             self._last_cost = compute_cost(self._circ, weights=self._weights)
+            self._action_mask = self._compute_action_mask()
 
 
 # -----------------------------
