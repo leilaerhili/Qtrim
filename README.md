@@ -5,6 +5,88 @@ Multi-device RL-based quantum circuit optimizer demo for the Snapdragon Multiver
 <p align="center">
   <img src="pc/assets/flowchart.png" alt="Q-Trim Architecture Flowchart" width="800">
 </p>
+# Hardware-Aware Quantum Circuit Optimization
+
+## Project Overview
+
+Quantum computing is an emerging field with the potential to solve problems that are intractable for classical computers. While quantum hardware is rapidly improving, a major challenge remains: **how do we actually use these machines effectively?**
+
+Quantum programs are not written like classical code. Instead, they are expressed as **quantum circuits**, which obey strict physical rules:
+- Operations must be reversible  
+- Information cannot be freely copied  
+- All transformations must preserve quantum correctness  
+
+Because of these constraints, quantum circuits cannot be optimized using traditional compiler techniques. To run efficiently on real hardware, they must be transformed using **legal rewrite rules** that reduce cost (such as circuit depth or noise sensitivity) without changing behavior.
+
+Our project addresses this exact problem.
+
+---
+
+## Core Idea: Optimization as Reinforcement Learning
+
+We frame quantum circuit optimization as a **reinforcement learning (RL)** problem.
+
+Starting from a correct but unoptimized quantum circuit, an RL agent learns how to apply valid circuit rewrites that improve performance according to quantum-specific cost functions. Each action preserves correctness while moving the circuit toward a more hardware-efficient form.
+
+This enables automated, scalable optimization that would be infeasible to perform manually.
+
+---
+
+## Offline Training (PC)
+
+The RL agent is trained **offline on a PC**, where it learns:
+- Which circuit rewrites are legally allowed  
+- How transformations affect quantum cost metrics  
+- Multi-step optimization strategies  
+
+This phase is hardware-agnostic and produces a **frozen policy** that is later used for inference.
+
+---
+
+## Edge Inference: Representing Quantum Hardware
+
+In real quantum systems, hardware conditions change frequently. Noise levels, connectivity, and error rates can vary from moment to moment, and optimization decisions should reflect these conditions.
+
+In our system, this role is represented by an **edge device**, implemented here as an Android phone.
+
+> The phone does **not** represent a consumer device.  
+> It symbolically represents a hardware-aware endpoint that lives alongside quantum computers.
+
+The edge node:
+- Knows current hardware constraints  
+- Runs **RL inference only** (no training)  
+- Advises which optimization move is best *at that moment*
+
+---
+
+## Hardware-Aware Optimization Loop
+
+The optimization process proceeds as an iterative loop:
+
+1. The PC selects a quantum circuit and computes its current cost.
+2. The circuit specification and cost context are sent to the edge node.
+3. The edge node runs RL inference using live hardware constraints.
+4. The edge node returns the next legal optimization move.
+5. The PC applies the rewrite, recalculates cost, and repeats.
+
+This loop continues until the circuit reaches an optimized form.
+
+**Key guarantees:**
+- The PC is the **system of record**
+- The edge node never modifies the circuit directly
+- Circuit correctness is enforced at every step
+
+---
+
+## Why This Architecture Matters
+
+This design cleanly separates responsibilities:
+- **Offline learning** on powerful machines  
+- **Hardware-aware decision making** at the edge  
+- **Safe, correct optimization** in a centralized loop  
+
+Together, these components form a realistic vision of how future quantum software stacks can dynamically adapt to changing hardware conditions — bridging the gap between abstract quantum algorithms and physical machines.
+
 
 ## Quick start
 1) Create a venv and install deps:
