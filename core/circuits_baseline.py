@@ -7,6 +7,8 @@ rewrite opportunities for the RL environment to discover quickly.
 
 from __future__ import annotations
 
+import math
+import random
 from typing import Callable, Dict
 
 from qiskit.circuit import QuantumCircuit, QuantumRegister
@@ -162,6 +164,86 @@ def build_line_circuit(pad_level: int = 1) -> QuantumCircuit:
     qc.rz(0.3, qr[2])  # mergeable
     _pad_rz_chain(qc, qr[2], pad_level)
     return qc
+
+
+def make_seeded_challenge_builder(
+    seed: int,
+    num_qubits: int = 5,
+    depth: int = 28,
+) -> Callable[[int], QuantumCircuit]:
+    """
+    Build a deterministic "harder" circuit generator for curriculum training.
+
+    The generated circuit mixes:
+    - random single-qubit gates,
+    - random two-qubit entangling gates,
+    - deliberate rewrite opportunities.
+    """
+
+    fixed_seed = int(seed)
+    nq = max(3, int(num_qubits))
+    base_depth = max(6, int(depth))
+
+    def _builder(pad_level: int = 1) -> QuantumCircuit:
+        rng = random.Random(fixed_seed + 1009 * int(pad_level))
+        qr = QuantumRegister(nq, "q")
+        qc = QuantumCircuit(qr, name=f"challenge_{fixed_seed}")
+
+        steps = base_depth + max(0, int(pad_level) - 1) * 4
+        for i in range(steps):
+            q = qr[rng.randrange(nq)]
+            choice = rng.random()
+            if choice < 0.60:
+                theta = rng.uniform(-math.pi, math.pi)
+                g = rng.choice(("rx", "ry", "rz", "h", "x", "y", "z", "s", "t"))
+                if g == "rx":
+                    qc.rx(theta, q)
+                elif g == "ry":
+                    qc.ry(theta, q)
+                elif g == "rz":
+                    qc.rz(theta, q)
+                elif g == "h":
+                    qc.h(q)
+                elif g == "x":
+                    qc.x(q)
+                elif g == "y":
+                    qc.y(q)
+                elif g == "z":
+                    qc.z(q)
+                elif g == "s":
+                    qc.s(q)
+                else:
+                    qc.t(q)
+            else:
+                a = rng.randrange(nq)
+                b = rng.randrange(nq - 1)
+                if b >= a:
+                    b += 1
+                qa, qb = qr[a], qr[b]
+                g2 = rng.choice(("cx", "cz", "cy"))
+                if g2 == "cx":
+                    qc.cx(qa, qb)
+                elif g2 == "cz":
+                    qc.cz(qa, qb)
+                else:
+                    qc.cy(qa, qb)
+
+            # Inject periodic simplification patterns.
+            if i % 9 == 0:
+                q1 = qr[rng.randrange(nq)]
+                qc.rz(0.3, q1)
+                qc.rz(-0.3, q1)
+            if i % 13 == 0:
+                a = rng.randrange(nq)
+                b = (a + 1) % nq
+                qc.cx(qr[a], qr[b])
+                qc.cx(qr[a], qr[b])
+
+        # Add deterministic padding opportunities.
+        _pad_rz_chain(qc, qr[rng.randrange(nq)], pad_level)
+        return qc
+
+    return _builder
 
 
 BASELINE_BUILDERS: Dict[str, Callable[[int], QuantumCircuit]] = {

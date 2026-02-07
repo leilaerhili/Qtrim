@@ -87,7 +87,7 @@ Usage
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 import math
 import numpy as np
@@ -1381,9 +1381,22 @@ def _resynth_2q_window_7(circ: QuantumCircuit, window: int = 7) -> Tuple[Quantum
                 if name == "identity":
                     new_ops = ops[:i] + ops[j + 1 :]
                 else:
-                    inst = gates[0]
-                    qargs = (qubits[0], qubits[1]) if inst.num_qubits == 2 else (qubits[0],)
-                    new_ops = ops[:i] + [Op(inst=inst, qargs=qargs, cargs=())] + ops[j + 1 :]
+                    replacement: List[Op] = []
+                    valid_replacement = True
+                    for inst in gates:
+                        if inst.num_qubits < 1 or inst.num_qubits > len(qubits):
+                            valid_replacement = False
+                            break
+                        replacement.append(
+                            Op(
+                                inst=inst,
+                                qargs=tuple(qubits[: inst.num_qubits]),
+                                cargs=(),
+                            )
+                        )
+                    if not valid_replacement:
+                        continue
+                    new_ops = ops[:i] + replacement + ops[j + 1 :]
 
                 new_circ = _rebuild_from_ops(circ, new_ops)
                 res = RewriteResult(
@@ -2583,6 +2596,37 @@ def apply_action(circuit: QuantumCircuit, action_id: int) -> Tuple[QuantumCircui
     if action_id not in _ACTIONS:
         raise ValueError(f"Unknown action_id={action_id}. Valid: {[a for a, _ in list_actions()]}")
     return _ACTIONS[action_id](circuit)
+
+
+def applicable_action_mask(
+    circuit: QuantumCircuit,
+    *,
+    allowed_action_ids: Optional[Set[int]] = None,
+) -> List[int]:
+    """
+    Compute per-action applicability mask for the given circuit.
+
+    Returns a binary list aligned with global action ids where:
+    - 1 means action is currently applicable (would change the circuit),
+    - 0 means no change (or action disallowed by allowed_action_ids).
+    """
+    actions = list_actions()
+    if allowed_action_ids is None:
+        allowed = {aid for aid, _ in actions}
+    else:
+        allowed = {int(aid) for aid in allowed_action_ids}
+
+    mask: List[int] = [0] * len(actions)
+    for aid, _ in actions:
+        if aid not in allowed:
+            mask[aid] = 0
+            continue
+        try:
+            _, res = apply_action(circuit, aid)
+            mask[aid] = 1 if res.changed else 0
+        except Exception:
+            mask[aid] = 0
+    return mask
 
 
 # -----------------------------

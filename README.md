@@ -17,12 +17,12 @@ Multi-device RL-based quantum circuit optimizer demo for the Snapdragon Multiver
 ## Baseline env demo
 Run the RL environment demo with a selectable baseline circuit:
 - python -m core.env_quantum_opt --baseline toy
-- python -m core.env_quantum_opt --baseline ghz
+- python -m core.env_quantum_opt --baseline parity
 - python -m core.env_quantum_opt --baseline line --pad-level 3 --max-steps 15
 
 Sample metrics (single run, random actions):
 - toy: reset cost 8.0 (gate_count=6, depth=4, cx=2) -> best cost 6.5
-- ghz: reset cost 10.5 (gate_count=7, depth=7, cx=2) -> best cost 6.0
+- parity: reset cost varies by pad-level and random action sequence
 - line: reset cost 10.5 (gate_count=7, depth=7, cx=3) -> best cost 9.0
 Note: results vary by random action sequence.
 
@@ -30,3 +30,11 @@ Note: results vary by random action sequence.
 - core/: circuits, rewrites, metrics, RL environment, training
 - pc/: Streamlit control surface + FastAPI server + demo scripts
 - phone/: Android or Termux client
+
+## Training
+- Single baseline, multi-seed with holdout evaluation:
+  - `python -m core.train_policy --baseline parity --timesteps 50000 --seeds 0,1,2 --ent-coef 0.01 --n-steps 1024 --save-name ppo_parity_50k`
+- Curriculum training (easy -> medium -> hard) with unseen holdout validation:
+  - `python -m core.train_curriculum --timesteps 60000 --seeds 0,1,2 --ent-coef 0.01 --n-steps 1024 --save-name ppo_curriculum_60k`
+- Both trainers auto-select and save the best holdout seed policy:
+  - `core/policy_store/<save-name>_best.zip`

@@ -7,6 +7,7 @@ from core.rewrites import (
     ACTION_CANCEL_INVERSE_RZ,
     ACTION_MERGE_ADJACENT_RZ,
     ACTION_REMOVE_IDENTITY_RZ,
+    ACTION_RESYNTH_2Q_WINDOW_7,
 )
 
 def unitary_equal(a: QuantumCircuit, b: QuantumCircuit, tol=1e-8) -> bool:
@@ -15,6 +16,24 @@ def unitary_equal(a: QuantumCircuit, b: QuantumCircuit, tol=1e-8) -> bool:
     Ub = Operator(b).data
     import numpy as np
     return float(np.linalg.norm(Ua - Ub, ord="fro")) <= tol
+
+
+def unitary_equal_up_to_global_phase(a: QuantumCircuit, b: QuantumCircuit, tol=1e-8) -> bool:
+    Ua = Operator(a).data
+    Ub = Operator(b).data
+    import numpy as np
+
+    idx = None
+    for i in range(Ua.size):
+        if abs(Ua.flat[i]) > tol or abs(Ub.flat[i]) > tol:
+            idx = i
+            break
+    if idx is None:
+        return True
+    if abs(Ub.flat[idx]) <= tol:
+        return False
+    phase = Ua.flat[idx] / Ub.flat[idx]
+    return bool(np.allclose(Ua, phase * Ub, atol=tol))
 
 def test_cancel_double_cx():
     qr = QuantumRegister(2, "q")
@@ -54,3 +73,16 @@ def test_remove_identity_rz():
     assert res.changed is True
     assert len(new_qc.data) == 0
     assert unitary_equal(qc, new_qc)
+
+def test_resynth_2q_window_preserves_multi_gate_replacement():
+    qr = QuantumRegister(2, "q")
+    qc = QuantumCircuit(qr)
+    # This 3-gate window has a known 2-gate resynthesis candidate.
+    qc.cx(qr[0], qr[1])
+    qc.swap(qr[0], qr[1])
+    qc.iswap(qr[0], qr[1])
+
+    new_qc, res = apply_action(qc, ACTION_RESYNTH_2Q_WINDOW_7)
+    assert res.changed is True
+    assert len(new_qc.data) == 2
+    assert unitary_equal_up_to_global_phase(qc, new_qc)
