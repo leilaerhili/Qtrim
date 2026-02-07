@@ -1,0 +1,146 @@
+{
+  "baseline": "toy",
+  "pad_level": 2,
+  "constraint_profile": "balanced",
+  "timesteps": 50000,
+  "seeds": [
+    0
+  ],
+  "ppo_hparams": {
+    "ent_coef": 0.01,
+    "learning_rate": 0.0003,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_envs": 1,
+    "algo": "dqn",
+    "device": "auto",
+    "strict_device": false,
+    "inference_backend": "torch",
+    "strict_inference_backend": false,
+    "onnx_sync_interval": 2000,
+    "onnx_qnn_backend_path": null,
+    "use_nexa_sdk": true,
+    "export_android_onnx": true,
+    "android_onnx_static_batch": 1,
+    "android_onnx_int8": true,
+    "android_qnn_strict_check": true,
+    "priority_profile_id": "balanced",
+    "priority_weights": null,
+    "max_depth_budget": null,
+    "max_latency_ms": null,
+    "max_shots": null,
+    "queue_level": "normal",
+    "noise_level": "normal",
+    "backend_condition": "unknown",
+    "train_mode": "fixed",
+    "mixed_pad_level_min": 1,
+    "mixed_pad_level_max": 3,
+    "use_applicability_mask": false
+  },
+  "runs": [
+    {
+      "seed": 0,
+      "policy_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\user_50k_seed0.zip",
+      "eval_mean_reward": 2.76,
+      "eval_std_reward": 0.0,
+      "holdout_mean_reward": 3.21,
+      "holdout_std_reward": 0.5809475019311124,
+      "training_curve_json": null,
+      "training_curve_png": null,
+      "device_resolution": {
+        "requested": "auto",
+        "resolved": "cpu",
+        "backend": "torch",
+        "reason": "Auto-selected accelerator using preference order npu > directml > cuda > xpu > mps > cpu.",
+        "availability": {
+          "npu": false,
+          "directml": false,
+          "cuda": false,
+          "xpu": false,
+          "mps": false,
+          "cpu": true
+        },
+        "strict": false,
+        "fallback_used": false
+      },
+      "inference_resolution": {
+        "backend": "torch",
+        "reason": "Requested torch inference backend."
+      },
+      "nexa_probe": {
+        "enabled": true,
+        "reason": "Nexa SDK initialized and plugins were enumerated.",
+        "python_package_version": "1.0.44",
+        "sdk_version": "v1.0.44",
+        "plugins": [
+          "cpu_gpu",
+          "nexaai_cpu_gpu",
+          "nexaai",
+          "nexaml",
+          "nexa_cuda_cpu_gpu",
+          "nexa_cuda",
+          "stable_diffusion",
+          "whisper_cpp"
+        ],
+        "devices": {
+          "cpu_gpu": [
+            "Microsoft Direct3D12 (Qualcomm(R) Adreno(TM) X1-85 GPU)"
+          ],
+          "nexaai_cpu_gpu": [],
+          "nexaai": [
+            "DirectML"
+          ],
+          "nexaml": [
+            "Microsoft Direct3D12 (Qualcomm(R) Adreno(TM) X1-85 GPU)",
+            "Microsoft Direct3D12 (Qualcomm(R) Adreno(TM) X1-85 GPU)",
+            "Microsoft Direct3D12 (Qualcomm(R) Adreno(TM) X1-85 GPU)"
+          ],
+          "nexa_cuda_cpu_gpu": [],
+          "nexa_cuda": [
+            "CUDA"
+          ],
+          "stable_diffusion": [],
+          "whisper_cpp": []
+        }
+      },
+      "onnx_model_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\user_50k_seed0_qnet.onnx",
+      "priority_config": {
+        "priority_profile_id": "balanced",
+        "context_queue_level": "normal",
+        "context_noise_level": "normal",
+        "context_backend": "unknown"
+      },
+      "android_onnx": {
+        "enabled": true,
+        "run_name": "user_50k_seed0",
+        "fp32_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\user_50k_seed0_android_fp32_bs1.onnx",
+        "int8_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\user_50k_seed0_android_int8_bs1.onnx",
+        "cpu_validation": {
+          "ok": true,
+          "error": null
+        },
+        "qnn_validation_fp32": {
+          "ok": true,
+          "error": null,
+          "providers": [
+            "QNNExecutionProvider",
+            "CPUExecutionProvider"
+          ]
+        },
+        "qnn_validation_int8": {
+          "ok": false,
+          "error": "Strict QNN validator crashed (exit=3221226095).",
+          "providers": [],
+          "stderr_tail": "02-07 06:01:37.0487626 [W:onnxruntime:Default, qnn_backend_manager.cc:466 onnxruntime::qnn::QnnLogging] C:\\repo_release\\52_9fdba\\QAISW\\FirstParty\\QNN\\HTP\\HTP\\src\\hexagon\\prepare\\tiling\\simple_tiler.cc:668:WARNING:SEAN, beginning for q::ConvLayer_fp16_S1_int_bias\n\u001b[m\n\u001b[0;93m2026-02-07 06:01:37.0501195 [W:onnxruntime:Default, qnn_backend_manager.cc:466 onnxruntime::qnn::QnnLogging] C:\\repo_release\\52_9fdba\\QAISW\\FirstParty\\QNN\\HTP\\HTP\\src\\hexagon\\prepare\\tiling\\simple_tiler.cc:668:WARNING:SEAN, beginning for q::Cast_fp16_to_fp32\n\u001b[m\n\u001b[1;31m2026-02-07 06:01:37.1334257 [E:onnxruntime:, inference_session.cc:2466 onnxruntime::InferenceSession::Initialize] This session contains graph nodes that are assigned to the default CPU EP, but fallback to CPU EP has been explicitly disabled by the user.\u001b[m",
+          "stdout_tail": "Graph Preparation Initializing\nCompleted stage: Graph Preparation Initializing (198 us)\nStarting stage: Graph Optimizations\nCompleted stage: Graph Optimizations (25404 us)\nStarting stage: Post Graph Optimization\nCompleted stage: Post Graph Optimization (242 us)\nStarting stage: Graph Sequencing for Target\nCompleted stage: Graph Sequencing for Target (827 us)\nStarting stage: VTCM Allocation\nCompleted stage: VTCM Allocation (70 us)\nStarting stage: Parallelization Optimization\nCompleted stage: Parallelization Optimization (39 us)\nStarting stage: Finalizing Graph Sequence\n\n====== DDR bandwidth summary ======\nspill_bytes=0\nfill_bytes=0\nwrite_total_bytes=4096\nread_total_bytes=16384\n\nCompleted stage: Finalizing Graph Sequence (496 us)\nStarting stage: Completion\nCompleted stage: Completion (125 us)"
+        },
+        "notes": []
+      }
+    }
+  ],
+  "mean_eval_reward_across_seeds": 2.76,
+  "mean_holdout_reward_across_seeds": 3.21,
+  "best_seed": 0,
+  "best_policy_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\user_50k_best.zip",
+  "best_holdout_mean_reward": 3.21
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.QTrimPhone" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/qtrim_blue</item>
+        <item name="colorPrimaryVariant">@color/qtrim_accent</item>
+        <item name="colorOnPrimary">@color/qtrim_text</item>
+        <item name="colorSecondary">@color/qtrim_blue</item>
+        <item name="android:statusBarColor">@color/qtrim_dark</item>
+        <item name="android:windowBackground">@color/qtrim_dark</item>
+        <item name="android:textColor">@color/qtrim_text</item>
+    </style>
+</resources>

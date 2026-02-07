@@ -1,0 +1,11 @@
+step | action_id | action_name                      | changed | reward   | cost     | gates | depth | cx
+--------------------------------------------------------------------------------------------------------
+   1 |        24 | cancel_nonlocal_commute_12       | True    |    1.900 |    6.250 |     7 |     7 |  3
+   2 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3
+   3 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3
+   4 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3
+   5 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3
+   6 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3
+   7 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3
+   8 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3
+   9 |        24 | cancel_nonlocal_commute_12       | False   |   -0.430 |    6.250 |     7 |     7 |  3

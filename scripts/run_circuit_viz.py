@@ -35,6 +35,10 @@ try:
     from stable_baselines3 import PPO
 except Exception:
     PPO = None  # type: ignore[assignment]
+try:
+    from stable_baselines3 import DQN
+except Exception:
+    DQN = None  # type: ignore[assignment]
 
 
 @dataclass
@@ -103,12 +107,35 @@ def run_episode(
     env: QuantumOptEnv,
     policy_path: Optional[Path],
     deterministic: bool,
+    algo: str,
 ) -> Tuple[QuantumCircuit, QuantumCircuit, List[StepRecord]]:
     model = None
     if policy_path is not None:
-        if PPO is None:
+        if PPO is None and DQN is None:
             raise RuntimeError("stable-baselines3 is not available. Install requirements first.")
-        model = PPO.load(str(policy_path))
+        if algo == "ppo":
+            if PPO is None:
+                raise RuntimeError("PPO is unavailable in this environment.")
+            model = PPO.load(str(policy_path))
+        elif algo == "dqn":
+            if DQN is None:
+                raise RuntimeError("DQN is unavailable in this environment.")
+            model = DQN.load(str(policy_path))
+        else:
+            load_errors: List[str] = []
+            if PPO is not None:
+                try:
+                    model = PPO.load(str(policy_path))
+                except Exception as exc:
+                    load_errors.append(f"PPO: {exc}")
+            if model is None and DQN is not None:
+                try:
+                    model = DQN.load(str(policy_path))
+                except Exception as exc:
+                    load_errors.append(f"DQN: {exc}")
+            if model is None:
+                details = " | ".join(load_errors) if load_errors else "No supported algorithms available."
+                raise RuntimeError(f"Could not load policy '{policy_path}' in auto mode. {details}")
 
     obs, info = env.reset()
     start_circuit = env.get_circuit()
@@ -183,6 +210,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Circuit name: baseline keys or challenge_easy/challenge_medium/challenge_hard",
     )
     parser.add_argument("--policy", default=None, help="Path to SB3 PPO .zip model. Omit for random actions.")
+    parser.add_argument(
+        "--algo",
+        choices=["auto", "ppo", "dqn"],
+        default="auto",
+        help="Policy algorithm for loading model. Use auto to try PPO then DQN.",
+    )
     parser.add_argument("--seed", type=int, default=0, help="Seed for challenge circuit generators.")
     parser.add_argument("--pad-level", type=int, default=2)
     parser.add_argument("--max-steps", type=int, default=40)
@@ -222,6 +255,7 @@ def main() -> None:
         env=env,
         policy_path=policy_path,
         deterministic=bool(args.deterministic),
+        algo=str(args.algo),
     )
 
     prefix = f"{args.circuit}_pad{args.pad_level}_seed{args.seed}"

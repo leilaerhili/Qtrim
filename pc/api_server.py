@@ -41,9 +41,9 @@ def _env_float(name: str, default: float) -> float:
 
 
 ANDROID_INFER_URL = str(os.getenv("QTRIM_ANDROID_INFER_URL", "http://127.0.0.1:9001/infer"))
-ANDROID_TIMEOUT_S = _env_float("QTRIM_ANDROID_TIMEOUT_S", 5.0)
+ANDROID_TIMEOUT_S = _env_float("QTRIM_ANDROID_TIMEOUT_S", 20.0)
 DEFAULT_PAD_LEVEL = max(1, _env_int("QTRIM_OPT_PAD_LEVEL", 2))
-DEFAULT_MAX_STEPS = max(1, _env_int("QTRIM_OPT_MAX_STEPS", 30))
+DEFAULT_MAX_STEPS = max(1, _env_int("QTRIM_OPT_MAX_STEPS", 5))
 
 # Keep compatibility with existing Streamlit circuit ids.
 CIRCUIT_ALIASES = {

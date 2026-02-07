@@ -14,6 +14,56 @@ Multi-device RL-based quantum circuit optimizer demo for the Snapdragon Multiver
 3) Run the PC API server (placeholder):
    - uvicorn pc.api_server:app --host 0.0.0.0 --port 8000
 
+## Packaged EXE + APK flow (Windows + Android)
+Run from repo root (`C:\Users\qc_de\Desktop\Qtrim`).
+
+1) Build packaged artifacts:
+   - `powershell -ExecutionPolicy Bypass -File scripts\build_exe.ps1`
+   - `powershell -ExecutionPolicy Bypass -File scripts\build_apk.ps1`
+   - Outputs:
+     - `dist\windows\QTrimDesktop.exe`
+     - `dist\android\QTrim-debug.apk`
+     - `dist\android\QTrim-release-unsigned.apk` (release build, unsigned)
+
+2) Install APK on phone:
+   - If `adb` is on PATH:
+     - `adb install -r dist\android\QTrim-debug.apk`
+   - If not on PATH:
+     - `& "C:\Users\qc_de\AppData\Local\Android\Sdk\platform-tools\adb.exe" install -r dist\android\QTrim-debug.apk`
+
+3) Launch phone app:
+   - Open **QTrim Phone** from app drawer, or:
+   - `& "C:\Users\qc_de\AppData\Local\Android\Sdk\platform-tools\adb.exe" shell am start -n com.qtrim.android/.MainActivity`
+
+4) USB inference tunnel (no phone IP needed):
+   - `& "C:\Users\qc_de\AppData\Local\Android\Sdk\platform-tools\adb.exe" forward tcp:9002 tcp:9002`
+   - Set env var in the same PowerShell where you run the EXE:
+     - `$env:QTRIM_ANDROID_INFER_URL = "http://127.0.0.1:9002/infer"`
+
+5) Start desktop packaged app:
+   - `dist\windows\QTrimDesktop.exe`
+   - Streamlit UI: `http://127.0.0.1:8501`
+   - API: `http://127.0.0.1:8000`
+
+6) Use flow:
+   - Keep phone app open in foreground.
+   - Choose profile on phone.
+   - Click **Run QTrim** in desktop UI.
+
+### Troubleshooting packaged flow
+- `adb` not recognized:
+  - Use full path: `C:\Users\qc_de\AppData\Local\Android\Sdk\platform-tools\adb.exe`
+- App installed but not opened:
+  - Install only copies APK; launch manually or with `adb shell am start ...`
+- Desktop UI returns `502`:
+  - Verify forwarding: `adb forward --list`
+  - Verify phone endpoint:
+    - `Invoke-WebRequest http://127.0.0.1:9002/health`
+    - `Invoke-WebRequest http://127.0.0.1:9002/profile`
+  - If needed, recreate tunnel:
+    - `adb forward --remove-all`
+    - `adb forward tcp:9002 tcp:9002`
+
 ## Baseline env demo
 Run the RL environment demo with a selectable baseline circuit:
 - python -m core.env_quantum_opt --baseline toy

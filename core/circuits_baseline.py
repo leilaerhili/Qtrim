@@ -420,6 +420,7 @@ def make_seeded_challenge_builder(
 BASELINE_BUILDERS: Dict[str, Callable[[int], QuantumCircuit]] = {
     # Internal / debug
     "toy": build_toy_circuit,
+    "ghz": build_ghz_circuit,
     "conjugation": build_conjugation_circuit,
     "identity_cleanup": build_identity_cleanup_circuit,
     "routing": build_routing_circuit,
@@ -437,6 +438,12 @@ DEMO_BUILDERS: Dict[str, Callable[[int], QuantumCircuit]] = {
     "half_adder": build_half_adder_circuit,
     "majority": build_majority_circuit,
     "line": build_line_circuit,
+    "toy": build_toy_circuit,
+    "ghz": build_ghz_circuit,
+    "conjugation": build_conjugation_circuit,
+    "identity_cleanup": build_identity_cleanup_circuit,
+    "routing": build_routing_circuit,
+    "entangler_family": build_entangler_family_circuit,
 }
 
 
@@ -444,6 +451,7 @@ DEMO_BUILDERS: Dict[str, Callable[[int], QuantumCircuit]] = {
 # Lower weight for less helpful/overlapping examples.
 TRAIN_MIXED_BASELINE_WEIGHTS: Dict[str, float] = {
     "toy": 0.8,
+    "ghz": 0.9,
     "parity": 1.0,
     "half_adder": 1.1,
     "majority": 0.0,

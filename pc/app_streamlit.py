@@ -19,6 +19,12 @@ CIRCUITS = {
     "Half Adder": "half_adder",
     "Majority Vote": "majority_vote",
     "Linear Dataflow Pipeline": "linear_dataflow_pipeline",
+    "Toy Cleanup": "toy",
+    "GHZ State Prep": "ghz",
+    "Conjugation Rules": "conjugation",
+    "Identity Cleanup": "identity_cleanup",
+    "Routing Stress": "routing",
+    "Entangler Family": "entangler_family",
 }
 
 BASELINE = {
@@ -26,7 +32,18 @@ BASELINE = {
     "half_adder": {"gate_count": 72, "depth": 28, "cost": 132},
     "majority_vote": {"gate_count": 80, "depth": 31, "cost": 150},
     "linear_dataflow_pipeline": {"gate_count": 95, "depth": 40, "cost": 190},
+    "toy": {"gate_count": 52, "depth": 20, "cost": 96},
+    "ghz": {"gate_count": 58, "depth": 22, "cost": 108},
+    "conjugation": {"gate_count": 74, "depth": 29, "cost": 142},
+    "identity_cleanup": {"gate_count": 86, "depth": 34, "cost": 165},
+    "routing": {"gate_count": 104, "depth": 43, "cost": 206},
+    "entangler_family": {"gate_count": 112, "depth": 48, "cost": 224},
 }
+
+
+def _baseline_snapshot(circuit_id: str) -> dict:
+    fallback = {"gate_count": 0, "depth": 0, "cost": 0}
+    return BASELINE.get(circuit_id, fallback).copy()
 
 DEFAULT_CIRCUIT_STYLE = {
     "backgroundcolor": "none",
@@ -350,7 +367,7 @@ st.markdown("<div style='height:18px;'></div>", unsafe_allow_html=True)
 if "selected_circuit_id" not in st.session_state:
     st.session_state.selected_circuit_id = "half_adder"
 if "before" not in st.session_state:
-    st.session_state.before = BASELINE["half_adder"].copy()
+    st.session_state.before = _baseline_snapshot("half_adder")
 if "after" not in st.session_state:
     st.session_state.after = None
 if "before_qasm" not in st.session_state:
@@ -388,7 +405,7 @@ with left:
     # Update baseline if selection changes
     if circuit_id != st.session_state.selected_circuit_id:
         st.session_state.selected_circuit_id = circuit_id
-        st.session_state.before = BASELINE[circuit_id].copy()
+        st.session_state.before = _baseline_snapshot(circuit_id)
         st.session_state.after = None
         st.session_state.before_qasm = None
         st.session_state.after_qasm = None
@@ -415,7 +432,7 @@ with left:
         }
         with st.spinner("Optimizing..."):
             try:
-                resp = requests.post(API_URL, json=payload, timeout=12)
+                resp = requests.post(API_URL, json=payload, timeout=30)
                 resp.raise_for_status()
                 result = resp.json()
 

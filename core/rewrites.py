@@ -410,6 +410,126 @@ def _noop(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
     return circ.copy(), res
 
 
+def _disabled_fuse_1q_chain_7(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_FUSE_1Q_CHAIN_7,
+        action_name="fuse_1q_chain_7",
+        message="Disabled to suppress opaque/crazy synthesized UnitaryGate output.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
+def _disabled_fuse_multi_q_unitary(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_FUSE_MULTI_Q_UNITARY,
+        action_name="fuse_multi_q_unitary",
+        message="Disabled to suppress opaque/crazy synthesized multi-qubit UnitaryGate output.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
+def _disabled_resynth_2q_window_7(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_RESYNTH_2Q_WINDOW_7,
+        action_name="resynth_2q_window_7",
+        message="Disabled to suppress rare/expensive 2Q resynthesis search.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
+def _disabled_resynth_3q_window_7(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_RESYNTH_3Q_WINDOW_5,
+        action_name="resynth_3q_window_7",
+        message="Disabled to suppress rare/expensive 3Q resynthesis search.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
+def _disabled_depth_aware_commute_global(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_DEPTH_AWARE_COMMUTE_GLOBAL,
+        action_name="depth_aware_commute_global",
+        message="Disabled to suppress rare/expensive global depth commute search.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
+def _disabled_depth_aware_multi_swap_global(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_DEPTH_AWARE_MULTI_SWAP_GLOBAL,
+        action_name="depth_aware_multi_swap_global",
+        message="Disabled to suppress rare/expensive global multi-swap depth search.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
+def _disabled_depth_aware_multi_swap_full(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_DEPTH_AWARE_MULTI_SWAP_FULL,
+        action_name="depth_aware_multi_swap_full",
+        message="Disabled to suppress rare/expensive full-circuit multi-swap search.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
+def _disabled_resynth_4q_window_7(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
+    ops = _flatten_ops(circ)
+    n = len(ops)
+    res = RewriteResult(
+        changed=False,
+        action_id=ACTION_RESYNTH_4Q_WINDOW_7,
+        action_name="resynth_4q_window_7",
+        message="Disabled to suppress rare/expensive 4Q resynthesis search.",
+        old_len=n,
+        new_len=n,
+        window=None,
+    )
+    return circ.copy(), res
+
+
 def _cancel_double_cx(circ: QuantumCircuit) -> Tuple[QuantumCircuit, RewriteResult]:
     ops = _flatten_ops(circ)
     n = len(ops)
@@ -2557,21 +2677,37 @@ _ACTIONS: Dict[int, ActionFn] = {
     ACTION_CONJUGATE_H_G_H: _conjugate_h_g_h,
     ACTION_CONJUGATE_S_G_SDG: _conjugate_s_g_sdg,
     ACTION_CANCEL_NONLOCAL_COMMUTE_12: _cancel_nonlocal_commute_12,
-    ACTION_RESYNTH_2Q_WINDOW_7: _resynth_2q_window_7,
-    ACTION_RESYNTH_3Q_WINDOW_5: _resynth_3q_window_7,
+    # Disabled to suppress rare/expensive matrix-search resynthesis.
+    # ACTION_RESYNTH_2Q_WINDOW_7: _resynth_2q_window_7,
+    ACTION_RESYNTH_2Q_WINDOW_7: _disabled_resynth_2q_window_7,
+    # Disabled to suppress rare/expensive matrix-search resynthesis.
+    # ACTION_RESYNTH_3Q_WINDOW_5: _resynth_3q_window_7,
+    ACTION_RESYNTH_3Q_WINDOW_5: _disabled_resynth_3q_window_7,
     ACTION_ROUTE_CX_WITH_SWAP: _route_cx_with_swap,
     ACTION_UNROUTE_CX_WITH_SWAP: _unroute_cx_with_swap,
     ACTION_DEPTH_AWARE_COMMUTE: _depth_aware_commute,
     ACTION_ROUTE_CZ_CY_WITH_SWAP: _route_cz_cy_with_swap,
-    ACTION_DEPTH_AWARE_COMMUTE_GLOBAL: _depth_aware_commute_global,
+    # Disabled to suppress rare/expensive global depth search.
+    # ACTION_DEPTH_AWARE_COMMUTE_GLOBAL: _depth_aware_commute_global,
+    ACTION_DEPTH_AWARE_COMMUTE_GLOBAL: _disabled_depth_aware_commute_global,
     ACTION_DEPTH_AWARE_MULTI_SWAP: _depth_aware_multi_swap,
-    ACTION_FUSE_1Q_CHAIN_7: _fuse_1q_chain_7,
+    # Disabled to suppress opaque/crazy synthesized unitary gates.
+    # ACTION_FUSE_1Q_CHAIN_7: _fuse_1q_chain_7,
+    ACTION_FUSE_1Q_CHAIN_7: _disabled_fuse_1q_chain_7,
     ACTION_ROUTE_ECR_ISWAP_RZZ_WITH_SWAP: _route_ecr_iswap_rzz_with_swap,
     ACTION_ROUTE_RXX_RYY_RZZ_WITH_SWAP: _route_rxx_ryy_rzz_with_swap,
-    ACTION_DEPTH_AWARE_MULTI_SWAP_GLOBAL: _depth_aware_multi_swap_global,
-    ACTION_DEPTH_AWARE_MULTI_SWAP_FULL: _depth_aware_multi_swap_full,
-    ACTION_FUSE_MULTI_Q_UNITARY: _fuse_multi_q_unitary,
-    ACTION_RESYNTH_4Q_WINDOW_7: _resynth_4q_window_7,
+    # Disabled to suppress rare/expensive global/full multi-swap search.
+    # ACTION_DEPTH_AWARE_MULTI_SWAP_GLOBAL: _depth_aware_multi_swap_global,
+    ACTION_DEPTH_AWARE_MULTI_SWAP_GLOBAL: _disabled_depth_aware_multi_swap_global,
+    # Disabled to suppress rare/expensive global/full multi-swap search.
+    # ACTION_DEPTH_AWARE_MULTI_SWAP_FULL: _depth_aware_multi_swap_full,
+    ACTION_DEPTH_AWARE_MULTI_SWAP_FULL: _disabled_depth_aware_multi_swap_full,
+    # Disabled to suppress opaque/crazy synthesized unitary gates.
+    # ACTION_FUSE_MULTI_Q_UNITARY: _fuse_multi_q_unitary,
+    ACTION_FUSE_MULTI_Q_UNITARY: _disabled_fuse_multi_q_unitary,
+    # Disabled to suppress rare/expensive matrix-search resynthesis.
+    # ACTION_RESYNTH_4Q_WINDOW_7: _resynth_4q_window_7,
+    ACTION_RESYNTH_4Q_WINDOW_7: _disabled_resynth_4q_window_7,
     ACTION_ROUTE_DIRECTED_MORE: _route_directed_more,
 }
 
