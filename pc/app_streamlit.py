@@ -1,10 +1,13 @@
 import base64
+from io import BytesIO
 from pathlib import Path
+from typing import Optional
 
 import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
+from qiskit import QuantumCircuit
 
 API_URL = "http://127.0.0.1:8000/optimize"
 
@@ -23,6 +26,17 @@ BASELINE = {
     "half_adder": {"gate_count": 72, "depth": 28, "cost": 132},
     "majority_vote": {"gate_count": 80, "depth": 31, "cost": 150},
     "linear_dataflow_pipeline": {"gate_count": 95, "depth": 40, "cost": 190},
+}
+
+DEFAULT_CIRCUIT_STYLE = {
+    "backgroundcolor": "none",
+    "gatefacecolor": "none",
+    "barrierfacecolor": "none",
+    "linecolor": "#e8f1ff",
+    "textcolor": "#e8f1ff",
+    "gatetextcolor": "#e8f1ff",
+    "subtextcolor": "#b9e3ff",
+    "barrieredgecolor": "#b9e3ff",
 }
 
 st.set_page_config(page_title="QTrim", layout="wide")
@@ -90,6 +104,7 @@ def inject_theme(bg_path: Path):
             padding-top: 10px;
             padding-bottom: 10px;
           }}
+
         </style>
         """,
         unsafe_allow_html=True,
@@ -153,6 +168,95 @@ def bar_chart(before: dict, after: dict):
     )
     st.plotly_chart(fig, use_container_width=True)
 
+def load_qasm(qasm_text: str) -> Optional[QuantumCircuit]:
+    if not qasm_text or not qasm_text.strip():
+        return None
+    try:
+        return QuantumCircuit.from_qasm_str(qasm_text)
+    except Exception:
+        try:
+            from qiskit import qasm2
+
+            return qasm2.loads(qasm_text)
+        except Exception:
+            return None
+
+def circuit_to_png_bytes(circuit: QuantumCircuit) -> Optional[bytes]:
+    try:
+        import matplotlib.pyplot as plt
+
+        fig = circuit.draw(output="mpl", style=DEFAULT_CIRCUIT_STYLE)
+        fig.patch.set_alpha(0)
+        buf = BytesIO()
+        fig.savefig(buf, format="png", dpi=200, bbox_inches="tight", transparent=True)
+        plt.close(fig)
+        buf.seek(0)
+        return buf.getvalue()
+    except Exception:
+        return None
+
+def format_ascii_diagram(diagram: str) -> str:
+    lines = diagram.splitlines()
+    wire_start = None
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith("q_") or stripped.startswith("c_"):
+            colon = line.find(":")
+            if colon != -1:
+                wire_start = colon + 2
+                break
+    if wire_start is None:
+        return diagram
+
+    aligned = []
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith("q_") or stripped.startswith("c_"):
+            aligned.append(line)
+            continue
+        lead = len(line) - len(line.lstrip(" "))
+        pad = max(0, wire_start - lead)
+        aligned.append((" " * pad) + line)
+    return "\n".join(aligned)
+
+def render_qasm_panel(title: str, qasm_text: Optional[str], empty_message: str) -> None:
+    st.markdown(
+        f"<div style='opacity:0.85; font-weight:600; margin-bottom:6px;'>{title}</div>",
+        unsafe_allow_html=True,
+    )
+    if not qasm_text:
+        st.info(empty_message)
+        return
+
+    circuit = load_qasm(qasm_text)
+    if circuit is None:
+        st.warning("Failed to parse QASM. Showing raw text instead.")
+        st.code(qasm_text, language="text")
+        return
+
+    st.markdown(
+        "<div style='opacity:0.7; font-size:0.85rem; margin-bottom:4px;'>Compact Diagram (Qiskit)</div>",
+        unsafe_allow_html=True,
+    )
+    compact_png = circuit_to_png_bytes(circuit)
+    if compact_png is None:
+        st.warning("Failed to render compact Qiskit diagram.")
+    else:
+        st.image(compact_png, use_container_width=True)
+
+    try:
+        ascii_diagram = circuit.draw(output="text")
+        ascii_diagram = format_ascii_diagram(str(ascii_diagram))
+        st.markdown(
+            "<div style='opacity:0.7; font-size:0.85rem; margin:10px 0 4px;'>Compact Diagram (ASCII)</div>",
+            unsafe_allow_html=True,
+        )
+        st.code(ascii_diagram, language="text")
+    except Exception:
+        st.warning("Failed to render compact ASCII diagram.")
+    with st.expander("Show QASM", expanded=False):
+        st.code(qasm_text, language="text")
+
 # ---------- Inject theme ----------
 BG_PATH = ASSETS / "bg.png"
 LOGO_PATH = ASSETS / "QTrim_Logo.png"
@@ -204,6 +308,8 @@ if "before_qasm" not in st.session_state:
     st.session_state.before_qasm = None
 if "after_qasm" not in st.session_state:
     st.session_state.after_qasm = None
+if "resolved_profile_id" not in st.session_state:
+    st.session_state.resolved_profile_id = None
 
 # ---------- Main layout ----------
 left, right = st.columns([0.28, 0.72], gap="large")
@@ -215,16 +321,12 @@ with left:
 
     circuit_label = st.selectbox("Circuit Type", list(CIRCUITS.keys()))
     circuit_id = CIRCUITS[circuit_label]
-    profile_label = st.selectbox(
-        "Priority Mode",
-        ["High Fidelity", "Low Latency", "Low Cost", "Balanced"],
-    )
-    profile_id = {
-        "High Fidelity": "high_fidelity",
-        "Low Latency": "low_latency",
-        "Low Cost": "low_cost",
-        "Balanced": "balanced",
-    }[profile_label]
+    profile_id = "auto"
+    st.caption("Priority profile is selected on the phone.")
+    if st.session_state.resolved_profile_id:
+        st.markdown(
+            f"Phone Priority: `{st.session_state.resolved_profile_id}`"
+        )
 
     with st.expander("Run Constraints", expanded=False):
         max_depth_budget = st.number_input("Max Depth", min_value=0, value=0, step=1)
@@ -241,6 +343,7 @@ with left:
         st.session_state.after = None
         st.session_state.before_qasm = None
         st.session_state.after_qasm = None
+        st.session_state.resolved_profile_id = None
 
     run = st.button("Run QTrim", use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -269,6 +372,7 @@ with left:
 
                 st.session_state.before = result["before"]
                 st.session_state.after = result["after"]
+                st.session_state.resolved_profile_id = result.get("profile_id")
 
                 # Future: RL can return these
                 st.session_state.before_qasm = result.get("before_qasm")
@@ -288,20 +392,18 @@ with right:
         bcol, acol = st.columns(2, gap="large")
 
         with bcol:
-            st.markdown("<div style='opacity:0.85; font-weight:600; margin-bottom:6px;'>Untrimmed Circuit</div>", unsafe_allow_html=True)
-            if st.session_state.before_qasm:
-                st.code(st.session_state.before_qasm, language="text")
-            else:
-                st.info("Circuit diagram placeholder (before)")
+            render_qasm_panel(
+                "Untrimmed Circuit",
+                st.session_state.before_qasm,
+                "Circuit diagram placeholder (before)",
+            )
 
         with acol:
-            st.markdown("<div style='opacity:0.85; font-weight:600; margin-bottom:6px;'>Trimmed Circuit</div>", unsafe_allow_html=True)
-            if st.session_state.after_qasm:
-                st.code(st.session_state.after_qasm, language="text")
-            elif st.session_state.after:
-                st.info("Circuit diagram placeholder (after)")
-            else:
-                st.info("Run QTrim to generate optimized circuit")
+            render_qasm_panel(
+                "Trimmed Circuit",
+                st.session_state.after_qasm,
+                "Run QTrim to generate optimized circuit",
+            )
 
         st.markdown("</div>", unsafe_allow_html=True)
 

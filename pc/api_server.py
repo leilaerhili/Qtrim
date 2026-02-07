@@ -105,9 +105,46 @@ def health():
     return {"ok": True}
 
 
-def _effective_profile_id(req: OptimizeRequest) -> str:
-    if req.profile_id and str(req.profile_id).strip().lower() != "auto":
+def _is_auto_profile(profile_id: Optional[str]) -> bool:
+    if profile_id is None:
+        return True
+    key = str(profile_id).strip().lower()
+    return key in ("", "auto", "phone", "android")
+
+
+def _profile_url_from_infer_url(infer_url: str) -> str:
+    url = str(infer_url).strip()
+    if not url:
+        return ""
+    if url.endswith("/infer"):
+        return url[: -len("/infer")] + "/profile"
+    return url.rstrip("/") + "/profile"
+
+
+def _fetch_android_profile_id(infer_url: str, timeout_s: float) -> Optional[str]:
+    profile_url = _profile_url_from_infer_url(infer_url)
+    if not profile_url:
+        return None
+    try:
+        resp = requests.get(profile_url, timeout=float(timeout_s))
+        resp.raise_for_status()
+        data = resp.json()
+        profile_id = data.get("profile_id")
+        if profile_id:
+            return str(profile_id).strip().lower()
+    except Exception:
+        return None
+    return None
+
+
+def _resolve_profile_id(req: OptimizeRequest, infer_url: str) -> str:
+    if not _is_auto_profile(req.profile_id):
         return str(req.profile_id).strip().lower()
+
+    phone_profile = _fetch_android_profile_id(infer_url, ANDROID_TIMEOUT_S)
+    if phone_profile:
+        return phone_profile
+
     if req.constraint_profile:
         return str(req.constraint_profile).strip().lower()
     return "balanced"
@@ -127,8 +164,15 @@ def _metric_payload(circuit: QuantumCircuit, weights: CostWeights) -> Dict[str, 
     }
 
 
-def _circuit_text(circuit: QuantumCircuit) -> str:
-    return str(circuit.draw(output="text"))
+def _circuit_qasm(circuit: QuantumCircuit) -> str:
+    try:
+        from qiskit import qasm2
+        return qasm2.dumps(circuit)
+    except Exception:
+        try:
+            return circuit.qasm()
+        except Exception:
+            return str(circuit.draw(output="text"))
 
 
 def _parse_action_id(data: Any) -> int:
@@ -174,6 +218,7 @@ def infer_action_with_android(
 
 @dataclass
 class OptimizationArtifacts:
+    profile_id: str
     before_circuit: QuantumCircuit
     after_circuit: QuantumCircuit
     before_metrics: Dict[str, Any]
@@ -184,11 +229,11 @@ class OptimizationArtifacts:
 
 
 def optimize_circuit_object(req: OptimizeRequest) -> OptimizationArtifacts:
-    profile_id = _effective_profile_id(req)
     weights_override = req.weights.as_dict() if req.weights is not None else None
     budgets = req.budgets or PriorityBudgetsModel()
     context = req.context or PriorityContextModel()
     infer_url = str(req.android_infer_url or ANDROID_INFER_URL)
+    profile_id = _resolve_profile_id(req, infer_url)
     max_steps = max(1, int(req.max_steps or DEFAULT_MAX_STEPS))
     pad_level = max(1, int(req.pad_level or DEFAULT_PAD_LEVEL))
     model_name = str(req.android_model_name or DEFAULT_ANDROID_MODEL_PATH.name)
@@ -289,6 +334,7 @@ def optimize_circuit_object(req: OptimizeRequest) -> OptimizationArtifacts:
         )
 
     return OptimizationArtifacts(
+        profile_id=profile_id,
         before_circuit=before_circuit,
         after_circuit=best_circuit,
         before_metrics=_metric_payload(before_circuit, weights=resolved_weights),
@@ -303,7 +349,6 @@ def optimize_circuit_object(req: OptimizeRequest) -> OptimizationArtifacts:
 def optimize(req: OptimizeRequest):
     budgets = req.budgets or PriorityBudgetsModel()
     context = req.context or PriorityContextModel()
-    profile_id = _effective_profile_id(req)
 
     try:
         result = optimize_circuit_object(req)
@@ -312,6 +357,7 @@ def optimize(req: OptimizeRequest):
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+    profile_id = result.profile_id
     model_name = str(req.android_model_name or DEFAULT_ANDROID_MODEL_PATH.name)
     infer_url = str(req.android_infer_url or ANDROID_INFER_URL)
     model_exists_local = bool((POLICY_STORE / model_name).exists())
@@ -332,7 +378,7 @@ def optimize(req: OptimizeRequest):
             "android_model_exists_in_pc_policy_store": model_exists_local,
             "steps_executed": len(result.step_trace),
         },
-        "before_qasm": _circuit_text(result.before_circuit),
-        "after_qasm": _circuit_text(result.after_circuit),
+        "before_qasm": _circuit_qasm(result.before_circuit),
+        "after_qasm": _circuit_qasm(result.after_circuit),
         "steps": result.step_trace,
     }

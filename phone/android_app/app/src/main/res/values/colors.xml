@@ -1,0 +1,7 @@
+<resources>
+    <color name="qtrim_blue">#2B5FFF</color>
+    <color name="qtrim_accent">#16307A</color>
+    <color name="qtrim_dark">#0F1420</color>
+    <color name="qtrim_surface">#151B2A</color>
+    <color name="qtrim_text">#EEF3FF</color>
+</resources>

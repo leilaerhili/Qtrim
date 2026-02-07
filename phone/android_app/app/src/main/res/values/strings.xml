@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">QTrim Phone</string>
+    <string name="title">QTrim Priority Profile</string>
+    <string name="status_label">Server status</string>
+    <string name="endpoint_label">Endpoint</string>
+    <string name="profile_label">Priority profile</string>
+    <string name="restart_button">Restart server</string>
+    <string name="starting">Starting...</string>
+</resources>

@@ -1,0 +1,27 @@
+R_DEF: Internal format may change without notice
+local
+color qtrim_accent
+color qtrim_blue
+color qtrim_dark
+color qtrim_surface
+color qtrim_text
+id endpointLabel
+id endpointValue
+id hintText
+id profileLabel
+id profileSpinner
+id profileValue
+id restartButton
+id statusLabel
+id statusValue
+id subtitleText
+id titleText
+layout activity_main
+string app_name
+string endpoint_label
+string profile_label
+string restart_button
+string starting
+string status_label
+string title
+style Theme.QTrimPhone

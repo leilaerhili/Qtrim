@@ -3,14 +3,37 @@
 Use `infer_server.py` to run ONNX policy inference on Android (Termux/Python) and
 serve action predictions to the PC API.
 
+## Recommended: Native Android app (no Termux)
+
+If you do not want to run Termux, use the native app instead:
+
+```
+Qtrim/phone/android_app
+```
+
+Open it in Android Studio and follow the README there.
+
 ## Start server on Android
 
 ```bash
 python phone/android/infer_server.py \
   --model core/policy_store/tiny_infer_handoff_seed0_android_int8_bs1.onnx \
   --host 0.0.0.0 \
-  --port 9001
+  --port 9001 \
+  --profile balanced
 ```
+
+## Pick the priority profile on Android
+
+Open the phone browser to the local UI:
+
+```
+http://127.0.0.1:9001/
+```
+
+That page lets you choose `balanced`, `high_fidelity`, `low_latency`, or `low_cost`.
+The PC API will fetch the current selection from `GET /profile` when you send
+`profile_id: "auto"` from the website.
 
 ## PC API configuration
 

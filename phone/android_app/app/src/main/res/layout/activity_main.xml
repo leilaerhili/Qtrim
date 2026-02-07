@@ -1,0 +1,110 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/qtrim_dark">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/title"
+            android:textColor="@color/qtrim_text"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/subtitleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Select the priority profile and keep this app open."
+            android:textColor="@color/qtrim_text"
+            android:textSize="14sp"
+            android:alpha="0.8" />
+
+        <TextView
+            android:id="@+id/statusLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/status_label"
+            android:textColor="@color/qtrim_text"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/statusValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/starting"
+            android:textColor="@color/qtrim_text"
+            android:alpha="0.85" />
+
+        <TextView
+            android:id="@+id/endpointLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/endpoint_label"
+            android:textColor="@color/qtrim_text"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/endpointValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="http://0.0.0.0:9002/infer"
+            android:textColor="@color/qtrim_text"
+            android:alpha="0.85" />
+
+        <TextView
+            android:id="@+id/profileLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/profile_label"
+            android:textColor="@color/qtrim_text"
+            android:textStyle="bold" />
+
+        <Spinner
+            android:id="@+id/profileSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:backgroundTint="@color/qtrim_blue" />
+
+        <TextView
+            android:id="@+id/profileValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textColor="@color/qtrim_text"
+            android:alpha="0.85" />
+
+        <Button
+            android:id="@+id/restartButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/restart_button" />
+
+        <TextView
+            android:id="@+id/hintText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Use the IP above in QTRIM_ANDROID_INFER_URL on your Mac."
+            android:textColor="@color/qtrim_text"
+            android:textSize="12sp"
+            android:alpha="0.7" />
+
+    </LinearLayout>
+</ScrollView>

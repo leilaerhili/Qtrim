@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.qtrim.android.app-mergeDebugResources-29:/values-h550dp-port-v13/values-h550dp-port-v13.xml",
+            "map": [
+                {
+                    "source": "/Users/jaspersands/.gradle/caches/9.0-milestone-1/transforms/701f9f34f0c2de6e38d75ed6a3ed9e3a/transformed/material-1.11.0/res/values-h550dp-port-v13/values-h550dp-port-v13.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "64",
+                        "endOffsets": "115"
+                    }
+                }
+            ]
+        }
+    ]
+}
