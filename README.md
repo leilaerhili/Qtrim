@@ -2,6 +2,10 @@
 
 Multi-device RL-based quantum circuit optimizer demo for the Snapdragon Multiverse Hackathon.
 
+<p align="center">
+  <img src="pc/assets/flowchart.png" alt="Q-Trim Architecture Flowchart" width="800">
+</p>
+
 ## Quick start
 1) Create a venv and install deps:
    - python -m venv .venv
