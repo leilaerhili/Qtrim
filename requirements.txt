@@ -15,11 +15,15 @@ nexaai>=1.0.44
 
 # PC control surface + API
 fastapi>=0.110.0
+pydantic>=2.6.0
 uvicorn[standard]>=0.27.0
 streamlit>=1.31.0
 pandas>=2.2.0
 plotly>=5.18.0
 requests>=2.31.0
+
+# Dev / tests
+pytest>=8.0.0
 
 # Optional accelerator backend (Windows/NPU fallback path):
 # pip install torch-directml
