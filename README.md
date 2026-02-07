@@ -34,6 +34,8 @@ Note: results vary by random action sequence.
 ## Training
 - Single baseline, multi-seed with holdout evaluation:
   - `python -m core.train_policy --baseline parity --timesteps 50000 --seeds 0,1,2 --ent-coef 0.01 --n-steps 1024 --save-name ppo_parity_50k`
+- Mixed-baseline training + parallel env rollout + periodic training curves:
+  - `python -m core.train_policy --train-mode mixed --n-envs 4 --timesteps 50000 --eval-every 5000 --curve-eval-episodes 3 --save-name ppo_mixed_50k`
 - Curriculum training (easy -> medium -> hard) with unseen holdout validation:
   - `python -m core.train_curriculum --timesteps 60000 --seeds 0,1,2 --ent-coef 0.01 --n-steps 1024 --save-name ppo_curriculum_60k`
 - Both trainers auto-select and save the best holdout seed policy:

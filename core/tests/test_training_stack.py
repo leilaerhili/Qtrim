@@ -2,7 +2,7 @@ from core.circuits_baseline import make_seeded_challenge_builder
 from core.env_quantum_opt import EnvConfig, QuantumOptEnv
 from core.rewrites import ACTION_CANCEL_DOUBLE_CX, ACTION_CANCEL_INVERSE_RZ
 from core.train_curriculum import default_curriculum, parse_seed_list as parse_curriculum_seed_list
-from core.train_policy import parse_seed_list as parse_policy_seed_list
+from core.train_policy import make_random_mixed_builder, parse_seed_list as parse_policy_seed_list
 
 
 def test_seeded_challenge_builder_is_deterministic():
@@ -35,3 +35,13 @@ def test_curriculum_allocates_timesteps():
     phases = default_curriculum(20_000)
     assert len(phases) == 3
     assert sum(p.timesteps for p in phases) == 20_000
+
+
+def test_mixed_builder_produces_circuits():
+    builder = make_random_mixed_builder(seed=7, pad_level_min=1, pad_level_max=2)
+    qc1 = builder(1)
+    qc2 = builder(1)
+    assert qc1.num_qubits >= 1
+    assert len(qc1.data) > 0
+    assert qc2.num_qubits >= 1
+    assert len(qc2.data) > 0
