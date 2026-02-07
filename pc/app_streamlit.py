@@ -50,9 +50,22 @@ def inject_theme(bg_path: Path):
     st.markdown(
         f"""
         <style>
+          :root {{
+            --qtrim-text: #ffffff;
+          }}
+
           .stApp {{
             background: url("data:image/png;base64,{bg}") no-repeat center center fixed;
             background-size: cover;
+          }}
+
+          .stApp,
+          .stApp p,
+          .stApp span,
+          .stApp label,
+          .stApp li,
+          .stApp small {{
+            color: var(--qtrim-text) !important;
           }}
 
           .block-container {{
@@ -76,7 +89,8 @@ def inject_theme(bg_path: Path):
           .section-title {{
             font-size: 1.05rem;
             letter-spacing: 0.4px;
-            opacity: 0.92;
+            color: var(--qtrim-text) !important;
+            opacity: 1;
             margin-bottom: 10px;
           }}
 
@@ -86,9 +100,9 @@ def inject_theme(bg_path: Path):
             border-radius: 14px;
             padding: 12px 14px;
           }}
-          .kpi-label {{opacity: 0.72; font-size: 0.85rem;}}
+          .kpi-label {{color: var(--qtrim-text) !important; opacity: 1; font-size: 0.85rem;}}
           .kpi-value {{font-size: 1.9rem; font-weight: 700; line-height: 1.1;}}
-          .kpi-delta {{opacity: 0.85; margin-top: 4px;}}
+          .kpi-delta {{color: var(--qtrim-text) !important; opacity: 1; margin-top: 4px;}}
 
           div.stButton > button {{
             border-radius: 12px !important;
@@ -103,6 +117,40 @@ def inject_theme(bg_path: Path):
             font-size: 0.95rem;
             padding-top: 10px;
             padding-bottom: 10px;
+            color: var(--qtrim-text) !important;
+          }}
+
+          .stCaption, [data-testid="stCaptionContainer"] * {{
+            color: var(--qtrim-text) !important;
+            opacity: 1 !important;
+          }}
+
+          [data-testid="stMarkdownContainer"] p,
+          [data-testid="stMarkdownContainer"] span,
+          [data-testid="stMarkdownContainer"] li,
+          [data-testid="stMarkdownContainer"] label,
+          [data-testid="stExpander"] summary,
+          [data-testid="stExpander"] summary *,
+          [data-testid="stDataFrame"] *,
+          [data-testid="stTable"] *,
+          [data-testid="stAlertContainer"] * {{
+            color: var(--qtrim-text) !important;
+          }}
+
+          [data-testid="stCodeBlock"] *,
+          [data-testid="stCode"] *,
+          .stCode *,
+          pre code,
+          pre span {{
+            color: inherit !important;
+          }}
+
+          [data-testid="stCodeBlock"] pre,
+          [data-testid="stCode"] pre,
+          [data-testid="stCodeBlock"] code,
+          [data-testid="stCode"] code {{
+            color: #000000 !important;
+            background: #ffffff !important;
           }}
 
         </style>
@@ -163,7 +211,7 @@ def bar_chart(before: dict, after: dict):
         margin=dict(l=10, r=10, t=25, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="rgba(235,245,255,0.92)"),
+        font=dict(color="#ffffff"),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -221,7 +269,7 @@ def format_ascii_diagram(diagram: str) -> str:
 
 def render_qasm_panel(title: str, qasm_text: Optional[str], empty_message: str) -> None:
     st.markdown(
-        f"<div style='opacity:0.85; font-weight:600; margin-bottom:6px;'>{title}</div>",
+        f"<div style='color:#ffffff; opacity:1; font-weight:600; margin-bottom:6px;'>{title}</div>",
         unsafe_allow_html=True,
     )
     if not qasm_text:
@@ -235,7 +283,7 @@ def render_qasm_panel(title: str, qasm_text: Optional[str], empty_message: str) 
         return
 
     st.markdown(
-        "<div style='opacity:0.7; font-size:0.85rem; margin-bottom:4px;'>Compact Diagram (Qiskit)</div>",
+        "<div style='color:#ffffff; opacity:1; font-size:0.85rem; margin-bottom:4px;'>Compact Diagram (Qiskit)</div>",
         unsafe_allow_html=True,
     )
     compact_png = circuit_to_png_bytes(circuit)
@@ -248,7 +296,7 @@ def render_qasm_panel(title: str, qasm_text: Optional[str], empty_message: str) 
         ascii_diagram = circuit.draw(output="text")
         ascii_diagram = format_ascii_diagram(str(ascii_diagram))
         st.markdown(
-            "<div style='opacity:0.7; font-size:0.85rem; margin:10px 0 4px;'>Compact Diagram (ASCII)</div>",
+            "<div style='color:#ffffff; opacity:1; font-size:0.85rem; margin:10px 0 4px;'>Compact Diagram (ASCII)</div>",
             unsafe_allow_html=True,
         )
         st.code(ascii_diagram, language="text")
@@ -287,7 +335,8 @@ st.markdown(
     """
     <div style="
         text-align:center;
-        opacity:0.75;
+        color: #ffffff;
+        opacity:1;
         margin-top:-6px;
         font-size:1rem;
     ">Reinforcement Learning for Quantum Circuit Optimization</div>

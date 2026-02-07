@@ -1,5 +1,6 @@
 # Core
 qiskit>=1.0.0
+pylatexenc>=2.10
 gymnasium>=0.29.0
 numpy>=1.26.0
 matplotlib>=3.8.0
