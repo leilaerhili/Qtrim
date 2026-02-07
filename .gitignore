@@ -1,2 +1,17 @@
+
+# Virtual environment
+.venv/
+
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log
