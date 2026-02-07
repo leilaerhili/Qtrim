@@ -1,11 +1,10 @@
 # Quantum Multiverse Optimizer
 
-Multi-device RL-based quantum circuit optimizer demo for the Snapdragon Multiverse Hackathon.
+Hardware-Aware Quantum Circuit Optimization
 
 <p align="center">
   <img src="pc/assets/flowchart.png" alt="Q-Trim Architecture Flowchart" width="800">
 </p>
-# Hardware-Aware Quantum Circuit Optimization
 
 ## Project Overview
 
@@ -20,7 +19,7 @@ Because of these constraints, quantum circuits cannot be optimized using traditi
 
 Our project addresses this exact problem.
 
----
+
 
 ## Core Idea: Optimization as Reinforcement Learning
 
@@ -30,7 +29,7 @@ Starting from a correct but unoptimized quantum circuit, an RL agent learns how 
 
 This enables automated, scalable optimization that would be infeasible to perform manually.
 
----
+
 
 ## Offline Training (PC)
 
@@ -41,7 +40,7 @@ The RL agent is trained **offline on a PC**, where it learns:
 
 This phase is hardware-agnostic and produces a **frozen policy** that is later used for inference.
 
----
+
 
 ## Edge Inference: Representing Quantum Hardware
 
@@ -57,7 +56,7 @@ The edge node:
 - Runs **RL inference only** (no training)  
 - Advises which optimization move is best *at that moment*
 
----
+
 
 ## Hardware-Aware Optimization Loop
 
@@ -76,7 +75,7 @@ This loop continues until the circuit reaches an optimized form.
 - The edge node never modifies the circuit directly
 - Circuit correctness is enforced at every step
 
----
+
 
 ## Why This Architecture Matters
 
