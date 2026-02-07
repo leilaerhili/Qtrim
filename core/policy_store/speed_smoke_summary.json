@@ -1,0 +1,55 @@
+{
+  "baseline": "toy",
+  "pad_level": 2,
+  "constraint_profile": "balanced",
+  "timesteps": 200,
+  "seeds": [
+    0
+  ],
+  "ppo_hparams": {
+    "ent_coef": 0.01,
+    "learning_rate": 0.0003,
+    "n_steps": 64,
+    "batch_size": 64,
+    "n_envs": 1,
+    "device": "cpu",
+    "strict_device": false,
+    "train_mode": "mixed",
+    "mixed_pad_level_min": 1,
+    "mixed_pad_level_max": 3,
+    "use_applicability_mask": false
+  },
+  "runs": [
+    {
+      "seed": 0,
+      "policy_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\speed_smoke_seed0.zip",
+      "eval_mean_reward": -3.31,
+      "eval_std_reward": 0.0,
+      "holdout_mean_reward": -3.18,
+      "holdout_std_reward": 0.0,
+      "training_curve_json": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\speed_smoke_seed0_curve.json",
+      "training_curve_png": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\speed_smoke_seed0_curve.png",
+      "device_resolution": {
+        "requested": "cpu",
+        "resolved": "cpu",
+        "backend": "torch",
+        "reason": "Requested 'cpu' is available.",
+        "availability": {
+          "npu": false,
+          "directml": false,
+          "cuda": false,
+          "xpu": false,
+          "mps": false,
+          "cpu": true
+        },
+        "strict": false,
+        "fallback_used": false
+      }
+    }
+  ],
+  "mean_eval_reward_across_seeds": -3.31,
+  "mean_holdout_reward_across_seeds": -3.18,
+  "best_seed": 0,
+  "best_policy_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\speed_smoke_best.zip",
+  "best_holdout_mean_reward": -3.18
+}

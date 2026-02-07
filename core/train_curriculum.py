@@ -81,6 +81,7 @@ def _make_phase_env(
         stall_patience=10,
         normalize_obs=True,
         allowed_action_ids=phase.allowed_action_ids,
+        use_applicability_mask=False,
     )
     env = QuantumOptEnv(circuit_builder=builder, pad_level=pad_level, config=config, seed=seed)
     return Monitor(env)
@@ -98,6 +99,7 @@ def _make_holdout_env(
         stall_patience=10,
         normalize_obs=True,
         allowed_action_ids=ACTION_STAGE_FULL,
+        use_applicability_mask=False,
     )
     return Monitor(QuantumOptEnv(circuit_builder=builder, pad_level=pad_level, config=config, seed=holdout_seed))
 
@@ -110,7 +112,7 @@ def default_curriculum(total_timesteps: int) -> List[CurriculumPhase]:
     return [
         CurriculumPhase(
             name="easy",
-            train_baselines=("toy", "parity"),
+            train_baselines=("toy", "parity", "identity_cleanup"),
             timesteps=t1,
             pad_level_min=1,
             pad_level_max=2,
@@ -118,7 +120,7 @@ def default_curriculum(total_timesteps: int) -> List[CurriculumPhase]:
         ),
         CurriculumPhase(
             name="medium",
-            train_baselines=("half_adder", "line", "majority"),
+            train_baselines=("half_adder", "conjugation", "routing", "entangler_family"),
             timesteps=t2,
             pad_level_min=2,
             pad_level_max=3,

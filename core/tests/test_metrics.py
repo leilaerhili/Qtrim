@@ -1,9 +1,15 @@
-import math
 from qiskit.circuit import QuantumRegister, QuantumCircuit
 
 from core.metrics import (
-    gate_count, depth, gate_histogram, cx_count,
-    compute_cost, weights_for_profile, observation_vector
+    gate_count,
+    depth,
+    gate_histogram,
+    cx_count,
+    swap_count,
+    compute_cost,
+    resolve_priority_weights,
+    weights_for_profile,
+    observation_vector,
 )
 
 def make_simple_circuit():
@@ -22,15 +28,30 @@ def test_basic_counts_and_histogram():
     hist = gate_histogram(qc)
     assert hist.get("cx", 0) == 2
     assert cx_count(qc) == 2
+    assert swap_count(qc) == 0
 
 def test_cost_profiles_change_cost():
     qc = make_simple_circuit()
     c_bal = compute_cost(qc, weights=weights_for_profile("balanced"))
-    c_noise = compute_cost(qc, weights=weights_for_profile("low_noise"))
+    c_noise = compute_cost(qc, weights=weights_for_profile("high_fidelity"))
     assert c_bal > 0
     assert c_noise > 0
     # Not guaranteed strictly different for every circuit, but usually should be.
     assert c_bal != c_noise
+    # Alias compatibility
+    c_alias = compute_cost(qc, weights=weights_for_profile("low_noise"))
+    assert c_alias == c_noise
+
+
+def test_priority_weight_override_is_applied():
+    qc = make_simple_circuit()
+    w_profile = resolve_priority_weights("low_latency")
+    w_override = resolve_priority_weights("low_latency", {"two_qubit_gates": 0.9, "depth": 0.1})
+    c_profile = compute_cost(qc, weights=w_profile)
+    c_override = compute_cost(qc, weights=w_override)
+    assert c_profile > 0.0
+    assert c_override > 0.0
+    assert c_profile != c_override
 
 def test_observation_vector_shape_and_types():
     qc = make_simple_circuit()

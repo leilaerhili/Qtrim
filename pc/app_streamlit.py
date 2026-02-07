@@ -215,6 +215,24 @@ with left:
 
     circuit_label = st.selectbox("Circuit Type", list(CIRCUITS.keys()))
     circuit_id = CIRCUITS[circuit_label]
+    profile_label = st.selectbox(
+        "Priority Mode",
+        ["High Fidelity", "Low Latency", "Low Cost", "Balanced"],
+    )
+    profile_id = {
+        "High Fidelity": "high_fidelity",
+        "Low Latency": "low_latency",
+        "Low Cost": "low_cost",
+        "Balanced": "balanced",
+    }[profile_label]
+
+    with st.expander("Run Constraints", expanded=False):
+        max_depth_budget = st.number_input("Max Depth", min_value=0, value=0, step=1)
+        max_latency_ms = st.number_input("Max Latency (ms)", min_value=0, value=0, step=50)
+        max_shots = st.number_input("Max Shots", min_value=0, value=0, step=100)
+        queue_level = st.selectbox("Queue Level", ["low", "normal", "high"], index=1)
+        noise_level = st.selectbox("Noise Level", ["low", "normal", "high"], index=1)
+        backend_condition = st.text_input("Backend", value="unknown")
 
     # Update baseline if selection changes
     if circuit_id != st.session_state.selected_circuit_id:
@@ -228,9 +246,20 @@ with left:
     st.markdown("</div>", unsafe_allow_html=True)
 
     if run:
+        budgets = {
+            "max_depth": int(max_depth_budget) if int(max_depth_budget) > 0 else None,
+            "max_latency_ms": float(max_latency_ms) if float(max_latency_ms) > 0 else None,
+            "max_shots": int(max_shots) if int(max_shots) > 0 else None,
+        }
         payload = {
             "circuit_id": st.session_state.selected_circuit_id,
-            "constraint_profile": "low_noise",  # fixed for now per your requirements
+            "profile_id": profile_id,
+            "budgets": budgets,
+            "context": {
+                "queue_level": queue_level,
+                "noise_level": noise_level,
+                "backend": backend_condition,
+            },
         }
         with st.spinner("Optimizing..."):
             try:

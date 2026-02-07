@@ -33,7 +33,7 @@ available (small circuits only) but are disabled by default for speed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 import gymnasium as gym
@@ -43,10 +43,11 @@ from qiskit.circuit import QuantumCircuit
 
 from core.metrics import (
     CostWeights,
+    cost_weights_to_priority_dict,
     compute_cost,
     compute_metrics,
     observation_vector,
-    weights_for_profile,
+    resolve_priority_weights,
 )
 from core.shared_schema import constraint_profile_to_id
 from core.rewrites import (
@@ -112,6 +113,17 @@ class EnvConfig:
     coupling_directed: bool = False
     allowed_action_ids: Optional[Tuple[int, ...]] = None
     use_applicability_mask: bool = True
+    priority_profile_id: str = "auto"
+    priority_weights: Optional[Dict[str, float]] = None
+    max_depth_budget: Optional[int] = None
+    max_latency_ms: Optional[float] = None
+    max_shots: Optional[int] = None
+    estimated_latency_per_depth_ms: float = 5.0
+    estimated_shots_per_step: int = 64
+    budget_penalty_scale: float = 1.0
+    context_queue_level: str = "normal"
+    context_noise_level: str = "normal"
+    context_backend: str = "unknown"
 
 
 class QuantumOptEnv(gym.Env):
@@ -180,8 +192,15 @@ class QuantumOptEnv(gym.Env):
         self._np_random, _ = gym.utils.seeding.np_random(seed)
 
         # Derived settings
-        self._weights: CostWeights = weights_for_profile(config.constraint_profile)
-        self._constraint_id: int = self._profile_to_id(config.constraint_profile)
+        requested_profile = str(config.priority_profile_id).strip().lower()
+        if requested_profile in ("", "auto"):
+            requested_profile = str(config.constraint_profile).strip().lower()
+        self._priority_profile_id = requested_profile
+        self._weights: CostWeights = resolve_priority_weights(
+            profile_id=self._priority_profile_id,
+            override_weights=config.priority_weights,
+        )
+        self._constraint_id: int = self._profile_to_id(self._priority_profile_id)
 
         # Episode state (set in reset)
         self._circ: Optional[QuantumCircuit] = None
@@ -190,6 +209,8 @@ class QuantumOptEnv(gym.Env):
         self._stall_count: int = 0
         self._last_cost: float = 0.0
         self._action_mask: Optional[List[int]] = None
+        self._last_budget_penalty: float = 0.0
+        self._last_budget_breakdown: Dict[str, float] = {}
 
     @staticmethod
     def _profile_to_id(profile: str) -> int:
@@ -200,6 +221,45 @@ class QuantumOptEnv(gym.Env):
         if num_qubits <= 1:
             return tuple()
         return tuple((i, i + 1) for i in range(num_qubits - 1))
+
+    def _estimate_latency_ms(self, depth_value: int) -> float:
+        return float(depth_value) * float(max(0.0, self._config.estimated_latency_per_depth_ms))
+
+    def _estimate_shots(self) -> int:
+        return int(self._step_count * max(0, int(self._config.estimated_shots_per_step)))
+
+    def _compute_budget_penalty(self, depth_value: int) -> Tuple[float, Dict[str, float]]:
+        penalty = 0.0
+        breakdown: Dict[str, float] = {}
+        scale = float(max(0.0, self._config.budget_penalty_scale))
+
+        if self._config.max_depth_budget is not None and self._config.max_depth_budget > 0:
+            limit = float(self._config.max_depth_budget)
+            over = max(0.0, float(depth_value) - limit)
+            if over > 0.0:
+                term = scale * (over / limit)
+                penalty += term
+                breakdown["depth"] = float(term)
+
+        latency = self._estimate_latency_ms(depth_value)
+        if self._config.max_latency_ms is not None and self._config.max_latency_ms > 0.0:
+            limit = float(self._config.max_latency_ms)
+            over = max(0.0, float(latency) - limit)
+            if over > 0.0:
+                term = scale * (over / limit)
+                penalty += term
+                breakdown["latency_ms"] = float(term)
+
+        shots = self._estimate_shots()
+        if self._config.max_shots is not None and self._config.max_shots > 0:
+            limit = float(self._config.max_shots)
+            over = max(0.0, float(shots) - limit)
+            if over > 0.0:
+                term = scale * (over / limit)
+                penalty += term
+                breakdown["shots"] = float(term)
+
+        return float(penalty), breakdown
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         if seed is not None:
@@ -219,6 +279,8 @@ class QuantumOptEnv(gym.Env):
         self._step_count = 0
         self._stall_count = 0
         self._last_cost = compute_cost(self._circ, weights=self._weights)
+        self._last_budget_penalty = 0.0
+        self._last_budget_breakdown = {}
         self._action_mask = self._compute_action_mask()
 
         obs = self._get_obs()
@@ -287,8 +349,9 @@ class QuantumOptEnv(gym.Env):
                 obs = self._get_obs()
                 return obs, reward, terminated, truncated, info
 
-        new_cost = compute_cost(self._circ, weights=self._weights)
-        self._last_cost = new_cost
+        new_metrics = compute_metrics(self._circ, weights=self._weights)
+        new_cost = float(new_metrics.cost)
+        self._last_cost = float(new_cost)
 
         # Reward is improvement in cost.
         improvement = old_cost - new_cost
@@ -311,6 +374,11 @@ class QuantumOptEnv(gym.Env):
             reward += float(self._config.reward_repeat_action)
             if last_result is not None and not last_result.changed:
                 reward += float(self._config.reward_repeat_noop)
+
+        budget_penalty, budget_breakdown = self._compute_budget_penalty(new_metrics.depth)
+        self._last_budget_penalty = float(budget_penalty)
+        self._last_budget_breakdown = dict(budget_breakdown)
+        reward -= float(budget_penalty)
 
         terminated = self._stall_count >= self._config.stall_patience
         truncated = self._step_count >= self._config.max_steps
@@ -337,15 +405,37 @@ class QuantumOptEnv(gym.Env):
     def _get_info(self, last_result: Optional[RewriteResult]) -> Dict:
         assert self._circ is not None
         m = compute_metrics(self._circ, weights=self._weights)
+        estimated_latency_ms = self._estimate_latency_ms(m.depth)
+        estimated_shots = self._estimate_shots()
         info: Dict = {
             "step": self._step_count,
             "stall_count": self._stall_count,
             "constraint_profile": self._config.constraint_profile,
+            "priority_profile_id": self._priority_profile_id,
+            "priority_weights": cost_weights_to_priority_dict(self._weights),
+            "budgets": {
+                "max_depth": self._config.max_depth_budget,
+                "max_latency_ms": self._config.max_latency_ms,
+                "max_shots": self._config.max_shots,
+            },
+            "context": {
+                "queue_level": self._config.context_queue_level,
+                "noise_level": self._config.context_noise_level,
+                "backend": self._config.context_backend,
+            },
             "metrics": {
                 "gate_count": m.gate_count,
                 "depth": m.depth,
                 "cx_count": m.cx_count,
+                "swap_count": m.swap_count,
                 "cost": m.cost,
+                "estimated_latency_ms": estimated_latency_ms,
+                "estimated_shots": estimated_shots,
+            },
+            "budget_penalty": {
+                "active": bool(self._last_budget_penalty > 0.0),
+                "total": float(self._last_budget_penalty),
+                "breakdown": dict(self._last_budget_breakdown),
             },
         }
         if last_result is not None:
@@ -375,7 +465,7 @@ class QuantumOptEnv(gym.Env):
         m = compute_metrics(self._circ, weights=self._weights)
         print(
             f"Step {self._step_count} | cost={m.cost:.3f} | "
-            f"gates={m.gate_count} | depth={m.depth} | cx={m.cx_count}"
+            f"gates={m.gate_count} | depth={m.depth} | cx={m.cx_count} | swap={m.swap_count}"
         )
 
     def get_circuit(self) -> QuantumCircuit:
@@ -390,8 +480,12 @@ class QuantumOptEnv(gym.Env):
 
         This does not reset the circuit; it only changes how reward/cost is computed.
         """
-        self._weights = weights_for_profile(profile)
-        self._constraint_id = self._profile_to_id(profile)
+        self._priority_profile_id = str(profile).strip().lower()
+        self._weights = resolve_priority_weights(
+            profile_id=self._priority_profile_id,
+            override_weights=self._config.priority_weights,
+        )
+        self._constraint_id = self._profile_to_id(self._priority_profile_id)
         # Update last_cost to match new weights for consistent reward deltas.
         if self._circ is not None:
             self._last_cost = compute_cost(self._circ, weights=self._weights)

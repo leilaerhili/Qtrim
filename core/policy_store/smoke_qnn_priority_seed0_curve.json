@@ -1,0 +1,11 @@
+{
+  "timesteps": [
+    64
+  ],
+  "mean_reward": [
+    -2.71
+  ],
+  "std_reward": [
+    0.0
+  ]
+}

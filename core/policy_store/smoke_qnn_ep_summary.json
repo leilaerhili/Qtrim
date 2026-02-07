@@ -1,0 +1,95 @@
+{
+  "baseline": "toy",
+  "pad_level": 2,
+  "constraint_profile": "balanced",
+  "timesteps": 128,
+  "seeds": [
+    0
+  ],
+  "ppo_hparams": {
+    "ent_coef": 0.01,
+    "learning_rate": 0.0003,
+    "n_steps": 64,
+    "batch_size": 64,
+    "n_envs": 1,
+    "algo": "dqn",
+    "device": "cpu",
+    "strict_device": false,
+    "inference_backend": "ort-qnn",
+    "strict_inference_backend": true,
+    "onnx_sync_interval": 32,
+    "onnx_qnn_backend_path": null,
+    "use_nexa_sdk": false,
+    "train_mode": "fixed",
+    "mixed_pad_level_min": 1,
+    "mixed_pad_level_max": 3,
+    "use_applicability_mask": false
+  },
+  "runs": [
+    {
+      "seed": 0,
+      "policy_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\smoke_qnn_ep_seed0.zip",
+      "eval_mean_reward": -3.18,
+      "eval_std_reward": 0.0,
+      "holdout_mean_reward": -1.74,
+      "holdout_std_reward": 0.0,
+      "training_curve_json": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\smoke_qnn_ep_seed0_curve.json",
+      "training_curve_png": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\smoke_qnn_ep_seed0_curve.png",
+      "device_resolution": {
+        "requested": "cpu",
+        "resolved": "cpu",
+        "backend": "torch",
+        "reason": "Requested 'cpu' is available.",
+        "availability": {
+          "npu": false,
+          "directml": false,
+          "cuda": false,
+          "xpu": false,
+          "mps": false,
+          "cpu": true
+        },
+        "strict": false,
+        "fallback_used": false
+      },
+      "inference_resolution": {
+        "resolution": {
+          "requested": "qnn",
+          "resolved": "qnn",
+          "provider_name": "QNNExecutionProvider",
+          "reason": "Requested provider 'qnn' is available.",
+          "available_providers": [
+            "QNNExecutionProvider",
+            "AzureExecutionProvider",
+            "CPUExecutionProvider"
+          ],
+          "strict": true,
+          "fallback_used": false,
+          "enabled": true,
+          "import_error": null
+        },
+        "export_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\smoke_qnn_ep_seed0_qnet.onnx",
+        "sync_interval": 32,
+        "sync_count": 1,
+        "fail_count": 0,
+        "active_providers": [
+          "QNNExecutionProvider",
+          "CPUExecutionProvider"
+        ]
+      },
+      "nexa_probe": {
+        "enabled": false,
+        "reason": "Nexa SDK probe disabled by CLI.",
+        "python_package_version": null,
+        "sdk_version": null,
+        "plugins": [],
+        "devices": {}
+      },
+      "onnx_model_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\smoke_qnn_ep_seed0_qnet.onnx"
+    }
+  ],
+  "mean_eval_reward_across_seeds": -3.18,
+  "mean_holdout_reward_across_seeds": -1.74,
+  "best_seed": 0,
+  "best_policy_path": "C:\\Users\\qc_de\\Desktop\\Qtrim\\core\\policy_store\\smoke_qnn_ep_best.zip",
+  "best_holdout_mean_reward": -1.74
+}

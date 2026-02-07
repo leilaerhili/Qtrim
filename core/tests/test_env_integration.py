@@ -122,3 +122,36 @@ def test_env_repeat_noop_penalty_applies():
 
     assert first_reward > 0.0
     assert second_reward <= -0.4
+
+
+def test_env_reports_priority_profile_details():
+    env = QuantumOptEnv(
+        circuit_builder=builder_with_known_easy_improvement,
+        pad_level=1,
+        config=EnvConfig(
+            priority_profile_id="high_fidelity",
+            context_queue_level="high",
+            context_noise_level="high",
+        ),
+    )
+    _, info = env.reset()
+    assert info["priority_profile_id"] == "high_fidelity"
+    assert "priority_weights" in info
+    assert info["context"]["queue_level"] == "high"
+    assert info["context"]["noise_level"] == "high"
+
+
+def test_env_applies_budget_penalty_when_depth_budget_exceeded():
+    env = QuantumOptEnv(
+        circuit_builder=builder_with_known_easy_improvement,
+        pad_level=1,
+        config=EnvConfig(
+            max_steps=6,
+            max_depth_budget=1,
+            budget_penalty_scale=2.0,
+        ),
+    )
+    env.reset()
+    _, _, _, _, info = env.step(ACTION_CANCEL_DOUBLE_CX)
+    assert info["budget_penalty"]["active"] is True
+    assert info["budget_penalty"]["total"] > 0.0

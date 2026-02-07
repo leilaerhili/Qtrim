@@ -7,6 +7,11 @@ matplotlib>=3.8.0
 # RL
 stable-baselines3>=2.2.1
 torch>=2.1.0
+onnx>=1.16.0
+onnxscript>=0.2.0
+onnxruntime-qnn>=1.24.1; platform_system == "Windows"
+onnxruntime>=1.24.1; platform_system != "Windows"
+nexaai>=1.0.44
 
 # PC control surface + API
 fastapi>=0.110.0
