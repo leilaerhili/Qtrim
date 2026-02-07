@@ -16,6 +16,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 
 from qiskit.circuit import QuantumCircuit
 
+from core.accelerator import format_device_resolution, resolve_training_device
 from core.env_quantum_opt import QuantumOptEnv, EnvConfig, CircuitBuilder
 import shutil
 
@@ -219,9 +220,16 @@ def train(
     eval_every: int = 50_000,
     eval_episodes: int = 20,
     device: str = "auto",
+    strict_device: bool = False,
     pad_level: int = 1,
     constraint_profile: str = "balanced",
 ) -> None:
+    resolved_device, device_resolution = resolve_training_device(
+        requested=device,
+        strict=bool(strict_device),
+    )
+    print(format_device_resolution(device_resolution))
+
     # Train on a MIX of circuits + varying pad levels to avoid trivial convergence
     mixed_builder = make_random_mixed_builder(seed=seed)
 
@@ -246,7 +254,7 @@ def train(
         gae_lambda=0.95,
         clip_range=0.2,
         verbose=0,  # no console tables/log spam
-        device=device,
+        device=resolved_device,
         seed=seed,
     )
 
@@ -318,6 +326,11 @@ def main() -> None:
     ap.add_argument("--eval-every", type=int, default=50_000)
     ap.add_argument("--eval-episodes", type=int, default=20)
     ap.add_argument("--device", type=str, default="auto")
+    ap.add_argument(
+        "--strict-device",
+        action="store_true",
+        help="Fail immediately if the requested device is unavailable.",
+    )
     ap.add_argument("--pad-level", type=int, default=1)
     ap.add_argument("--constraint-profile", type=str, default="balanced")
     args = ap.parse_args()
@@ -329,6 +342,7 @@ def main() -> None:
         eval_every=args.eval_every,
         eval_episodes=args.eval_episodes,
         device=args.device,
+        strict_device=args.strict_device,
         pad_level=args.pad_level,
         constraint_profile=args.constraint_profile,
     )

@@ -40,3 +40,13 @@ Note: results vary by random action sequence.
   - `python -m core.train_curriculum --timesteps 60000 --seeds 0,1,2 --ent-coef 0.01 --n-steps 1024 --save-name ppo_curriculum_60k`
 - Both trainers auto-select and save the best holdout seed policy:
   - `core/policy_store/<save-name>_best.zip`
+
+## NPU-first runs
+- Device selection now supports: `auto`, `npu`, `directml`, `cuda`, `xpu`, `mps`, `cpu`.
+- Force NPU and fail if it is not available:
+  - `python -m core.train_policy --device npu --strict-device --train-mode mixed --n-envs 4 --timesteps 50000 --save-name ppo_npu`
+  - `python -m core.train_curriculum --device npu --strict-device --timesteps 60000 --save-name ppo_curriculum_npu`
+- If `torch.npu` is unavailable, `--device npu` falls back to DirectML when `torch-directml` is installed (unless `--strict-device` is set).
+- Training summaries now include `device_resolution` per run so you can show exactly which backend/device was used.
+
+Note: the RL policy network can run on accelerator backends, but circuit rewrites/Qiskit environment steps are still CPU-side.

@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import shutil
 from statistics import mean, pstdev
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -18,6 +18,7 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from core.accelerator import format_device_resolution, resolve_training_device
 from core.circuits_baseline import BASELINE_BUILDERS, get_builder, make_seeded_challenge_builder
 from core.env_quantum_opt import EnvConfig, QuantumOptEnv
 
@@ -234,6 +235,7 @@ def train_policy(
     batch_size: int = 256,
     n_envs: int = 1,
     device: str = "auto",
+    strict_device: bool = False,
     train_mode: str = "fixed",
     mixed_pad_level_min: int = 1,
     mixed_pad_level_max: int = 3,
@@ -241,7 +243,17 @@ def train_policy(
     eval_episodes_curve: int = 5,
     curve_json_path: Optional[Path] = None,
     curve_png_path: Optional[Path] = None,
+    device_resolution_out: Optional[Dict[str, Any]] = None,
 ) -> PPO:
+    resolved_device, device_resolution = resolve_training_device(
+        requested=device,
+        strict=bool(strict_device),
+    )
+    print(format_device_resolution(device_resolution))
+    if device_resolution_out is not None:
+        device_resolution_out.clear()
+        device_resolution_out.update(device_resolution.to_dict())
+
     env = _make_train_vec_env(
         baseline=baseline,
         pad_level=pad_level,
@@ -261,7 +273,7 @@ def train_policy(
         learning_rate=float(learning_rate),
         n_steps=int(n_steps),
         batch_size=int(batch_size),
-        device=device,
+        device=resolved_device,
     )
     if int(eval_every) > 0:
         history = {"timesteps": [], "mean_reward": [], "std_reward": []}
@@ -383,6 +395,7 @@ def train_and_evaluate_seeds(
     batch_size: int,
     n_envs: int,
     device: str,
+    strict_device: bool,
     train_mode: str,
     mixed_pad_level_min: int,
     mixed_pad_level_max: int,
@@ -390,12 +403,13 @@ def train_and_evaluate_seeds(
     eval_episodes_curve: int,
 ) -> Dict[str, object]:
     POLICY_STORE.mkdir(parents=True, exist_ok=True)
-    runs: List[Dict[str, float | int | str]] = []
+    runs: List[Dict[str, object]] = []
 
     for seed in seeds:
         run_name = f"{save_name}_seed{seed}"
         curve_json = POLICY_STORE / f"{run_name}_curve.json"
         curve_png = POLICY_STORE / f"{run_name}_curve.png"
+        device_resolution_data: Dict[str, Any] = {}
         model = train_policy(
             baseline=baseline,
             pad_level=pad_level,
@@ -408,6 +422,7 @@ def train_and_evaluate_seeds(
             batch_size=batch_size,
             n_envs=n_envs,
             device=device,
+            strict_device=strict_device,
             train_mode=train_mode,
             mixed_pad_level_min=mixed_pad_level_min,
             mixed_pad_level_max=mixed_pad_level_max,
@@ -415,6 +430,7 @@ def train_and_evaluate_seeds(
             eval_episodes_curve=eval_episodes_curve,
             curve_json_path=curve_json if eval_every > 0 else None,
             curve_png_path=curve_png if eval_every > 0 else None,
+            device_resolution_out=device_resolution_data,
         )
         path = save_policy(model, run_name)
         eval_mean, eval_std = evaluate(
@@ -442,6 +458,7 @@ def train_and_evaluate_seeds(
                 "holdout_std_reward": float(holdout_std),
                 "training_curve_json": str(curve_json) if eval_every > 0 else None,
                 "training_curve_png": str(curve_png) if eval_every > 0 else None,
+                "device_resolution": dict(device_resolution_data),
             }
         )
 
@@ -458,6 +475,7 @@ def train_and_evaluate_seeds(
             "batch_size": int(batch_size),
             "n_envs": int(n_envs),
             "device": str(device),
+            "strict_device": bool(strict_device),
             "train_mode": str(train_mode),
             "mixed_pad_level_min": int(mixed_pad_level_min),
             "mixed_pad_level_max": int(mixed_pad_level_max),
@@ -506,7 +524,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--n-steps", type=int, default=1024)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--n-envs", type=int, default=1)
-    parser.add_argument("--device", default="auto")
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="Device preference: auto, npu, directml, cuda, xpu, mps, cpu.",
+    )
+    parser.add_argument(
+        "--strict-device",
+        action="store_true",
+        help="Fail immediately if the requested device is unavailable.",
+    )
     parser.add_argument("--train-mode", choices=["fixed", "mixed"], default="fixed")
     parser.add_argument("--mixed-pad-min", type=int, default=1)
     parser.add_argument("--mixed-pad-max", type=int, default=3)
@@ -541,6 +568,7 @@ def _main() -> None:
         batch_size=args.batch_size,
         n_envs=args.n_envs,
         device=args.device,
+        strict_device=args.strict_device,
         train_mode=args.train_mode,
         mixed_pad_level_min=args.mixed_pad_min,
         mixed_pad_level_max=args.mixed_pad_max,

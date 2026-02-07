@@ -14,13 +14,14 @@ from dataclasses import dataclass
 from pathlib import Path
 import shutil
 from statistics import mean, pstdev
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from core.accelerator import format_device_resolution, resolve_training_device
 from core.circuits_baseline import get_builder, make_seeded_challenge_builder
 from core.env_quantum_opt import EnvConfig, QuantumOptEnv
 
@@ -152,7 +153,19 @@ def train_curriculum_for_seed(
     learning_rate: float = 3e-4,
     n_steps: int = 1024,
     batch_size: int = 256,
+    device: str = "auto",
+    strict_device: bool = False,
+    device_resolution_out: Optional[Dict[str, Any]] = None,
 ) -> PPO:
+    resolved_device, device_resolution = resolve_training_device(
+        requested=device,
+        strict=bool(strict_device),
+    )
+    print(format_device_resolution(device_resolution))
+    if device_resolution_out is not None:
+        device_resolution_out.clear()
+        device_resolution_out.update(device_resolution.to_dict())
+
     phases = default_curriculum(total_timesteps)
     first_env = DummyVecEnv(
         [lambda: _make_phase_env(phases[0], constraint_profile=constraint_profile, seed=seed)]
@@ -166,6 +179,7 @@ def train_curriculum_for_seed(
         learning_rate=float(learning_rate),
         n_steps=int(n_steps),
         batch_size=int(batch_size),
+        device=resolved_device,
     )
 
     for i, phase in enumerate(phases):
@@ -206,11 +220,14 @@ def run_multi_seed(
     learning_rate: float,
     n_steps: int,
     batch_size: int,
+    device: str,
+    strict_device: bool,
 ) -> Dict[str, object]:
     POLICY_STORE.mkdir(parents=True, exist_ok=True)
     runs: List[Dict[str, object]] = []
 
     for s in seeds:
+        device_resolution_data: Dict[str, Any] = {}
         model = train_curriculum_for_seed(
             seed=int(s),
             total_timesteps=total_timesteps,
@@ -219,6 +236,9 @@ def run_multi_seed(
             learning_rate=learning_rate,
             n_steps=n_steps,
             batch_size=batch_size,
+            device=device,
+            strict_device=strict_device,
+            device_resolution_out=device_resolution_data,
         )
         model_path = POLICY_STORE / f"{save_name}_seed{s}.zip"
         model.save(model_path)
@@ -235,6 +255,7 @@ def run_multi_seed(
                 "policy_path": str(model_path),
                 "holdout_mean_reward": float(hold_mean),
                 "holdout_std_reward": float(hold_std),
+                "device_resolution": dict(device_resolution_data),
             }
         )
 
@@ -247,6 +268,8 @@ def run_multi_seed(
             "learning_rate": float(learning_rate),
             "n_steps": int(n_steps),
             "batch_size": int(batch_size),
+            "device": str(device),
+            "strict_device": bool(strict_device),
         },
         "holdout_seed_start": int(holdout_seed_start),
         "holdout_count": int(holdout_count),
@@ -281,6 +304,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--n-steps", type=int, default=1024)
     parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="Device preference: auto, npu, directml, cuda, xpu, mps, cpu.",
+    )
+    parser.add_argument(
+        "--strict-device",
+        action="store_true",
+        help="Fail immediately if the requested device is unavailable.",
+    )
     return parser
 
 
@@ -299,6 +332,8 @@ def _main() -> None:
         learning_rate=args.learning_rate,
         n_steps=args.n_steps,
         batch_size=args.batch_size,
+        device=args.device,
+        strict_device=args.strict_device,
     )
     print(f"Saved summary to: {summary['summary_path']}")
     print(
