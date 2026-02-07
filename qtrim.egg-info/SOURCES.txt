@@ -1,0 +1,17 @@
+LICENSE
+README.md
+pyproject.toml
+core/__init__.py
+core/circuits_baseline.py
+core/env_quantum_opt.py
+core/metrics.py
+core/rewrites.py
+core/shared_schema.py
+core/train_policy.py
+pc/api_server.py
+pc/app_streamlit.py
+phone/client.py
+qtrim.egg-info/PKG-INFO
+qtrim.egg-info/SOURCES.txt
+qtrim.egg-info/dependency_links.txt
+qtrim.egg-info/top_level.txt
